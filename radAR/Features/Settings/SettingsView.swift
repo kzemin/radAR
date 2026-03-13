@@ -6,24 +6,28 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var store = store
 
-        ScrollView {
-            VStack(alignment: .leading, spacing: RadarTheme.Spacing.section) {
-                preferencesPanel(
-                    showWatchlistFirstOnHome: Binding(
-                        get: { store.settings.showWatchlistFirstOnHome },
-                        set: { store.setShowWatchlistFirstOnHome($0) }
-                    ),
-                    useCompactNumbers: Binding(
-                        get: { store.settings.useCompactNumbers },
-                        set: { store.setUseCompactNumbers($0) }
+        ZStack {
+            TerminalScreenBackground()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: RadarTheme.Spacing.section) {
+                    preferencesPanel(
+                        showWatchlistFirstOnHome: Binding(
+                            get: { store.settings.showWatchlistFirstOnHome },
+                            set: { store.setShowWatchlistFirstOnHome($0) }
+                        ),
+                        useCompactNumbers: Binding(
+                            get: { store.settings.useCompactNumbers },
+                            set: { store.setUseCompactNumbers($0) }
+                        )
                     )
-                )
-                localDataPanel
-                aboutPanel
+                    localDataPanel
+                    aboutPanel
+                }
+                .padding(RadarTheme.Spacing.screen)
             }
-            .padding(RadarTheme.Spacing.screen)
         }
-        .background(TerminalScreenBackground())
+        .toolbar(.hidden, for: .navigationBar)
         .task {
             await store.loadSavedState()
         }

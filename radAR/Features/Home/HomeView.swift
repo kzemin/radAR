@@ -27,14 +27,18 @@ struct HomeView: View {
     }
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: RadarTheme.Spacing.section) {
-                content
+        ZStack {
+            TerminalScreenBackground()
+
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: RadarTheme.Spacing.section) {
+                    content
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(RadarTheme.Spacing.screen)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(RadarTheme.Spacing.screen)
         }
-        .background(TerminalScreenBackground())
+        .toolbar(.hidden, for: .navigationBar)
         .task {
             await monitorStore.loadIfNeeded()
         }

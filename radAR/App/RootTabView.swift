@@ -15,18 +15,14 @@ struct RootTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationStack {
-                HomeView(monitorStore: homeMonitorStore)
-            }
+            HomeView(monitorStore: homeMonitorStore)
             .tabItem {
                 Label(AppTab.home.title, systemImage: AppTab.home.systemImage)
             }
             .tag(AppTab.home)
 
             if AppFeatureFlags.showsCompareTab {
-                NavigationStack {
-                    CompareView(compareStore: compareStore)
-                }
+                CompareView(compareStore: compareStore)
                 .tabItem {
                     Label(AppTab.compare.title, systemImage: AppTab.compare.systemImage)
                 }
@@ -34,29 +30,25 @@ struct RootTabView: View {
             }
 
             if AppFeatureFlags.showsMarketTab {
-                NavigationStack {
-                    MarketView(
-                        productRadarStore: productRadarStore,
-                        showsQuickCompare: AppFeatureFlags.showsCompareTab,
-                        openCompare: { category in
-                            guard AppFeatureFlags.showsCompareTab else {
-                                return
-                            }
-
-                            compareStore.selectedCategory = category
-                            selectedTab = .compare
+                MarketView(
+                    productRadarStore: productRadarStore,
+                    showsQuickCompare: AppFeatureFlags.showsCompareTab,
+                    openCompare: { category in
+                        guard AppFeatureFlags.showsCompareTab else {
+                            return
                         }
-                    )
-                }
+
+                        compareStore.selectedCategory = category
+                        selectedTab = .compare
+                    }
+                )
                 .tabItem {
                     Label(AppTab.market.title, systemImage: AppTab.market.systemImage)
                 }
                 .tag(AppTab.market)
             }
         }
-        .background(TerminalScreenBackground())
-        .toolbarBackground(RadarTheme.Colors.backgroundElevated, for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarBackground(.hidden, for: .tabBar)
         .toolbarColorScheme(.dark, for: .tabBar)
     }
 }

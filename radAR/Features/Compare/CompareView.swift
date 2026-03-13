@@ -10,39 +10,43 @@ struct CompareView: View {
     var body: some View {
         @Bindable var compareStore = compareStore
 
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: RadarTheme.Spacing.section) {
-                topPanel
+        ZStack {
+            TerminalScreenBackground()
 
-                if let snapshot = compareStore.comparisonSnapshot {
-                    DashboardPanel(
-                        title: "Comparison Mode",
-                        subtitle: compareStore.selectionDetails,
-                        metadataItems: [
-                            PanelMetadataItem(title: "Rows", value: "\(snapshot.products.count)"),
-                            PanelMetadataItem(title: "Mode", value: "Side by side")
-                        ],
-                        badges: [
-                            PanelBadge("LIVE COMPARE", style: .live),
-                            PanelBadge(compareStore.selectedCategory.rawValue, style: .category)
-                        ],
-                        trailingContent: {
-                            TerminalButton(
-                                title: "Limpiar",
-                                style: .secondary,
-                                action: compareStore.clearSelection
-                            )
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: RadarTheme.Spacing.section) {
+                    topPanel
+
+                    if let snapshot = compareStore.comparisonSnapshot {
+                        DashboardPanel(
+                            title: "Comparison Mode",
+                            subtitle: compareStore.selectionDetails,
+                            metadataItems: [
+                                PanelMetadataItem(title: "Rows", value: "\(snapshot.products.count)"),
+                                PanelMetadataItem(title: "Mode", value: "Side by side")
+                            ],
+                            badges: [
+                                PanelBadge("LIVE COMPARE", style: .live),
+                                PanelBadge(compareStore.selectedCategory.rawValue, style: .category)
+                            ],
+                            trailingContent: {
+                                TerminalButton(
+                                    title: "Limpiar",
+                                    style: .secondary,
+                                    action: compareStore.clearSelection
+                                )
+                            }
+                        ) {
+                            ProductComparisonMatrixView(snapshot: snapshot)
                         }
-                    ) {
-                        ProductComparisonMatrixView(snapshot: snapshot)
                     }
-                }
 
-                content
+                    content
+                }
+                .padding(RadarTheme.Spacing.screen)
             }
-            .padding(RadarTheme.Spacing.screen)
         }
-        .background(TerminalScreenBackground())
+        .toolbar(.hidden, for: .navigationBar)
         .task(id: compareStore.selectedCategory) {
             await compareStore.refresh()
         }
