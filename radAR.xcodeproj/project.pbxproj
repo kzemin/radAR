@@ -10,22 +10,9 @@
 		9F5D03CB2F625EA700ADF4C1 /* radAR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = radAR.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		9F5D055B2F63105B00ADF4C1 /* Exceptions for "radAR" folder in "radAR" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 9F5D03CA2F625EA700ADF4C1 /* radAR */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9F5D03CD2F625EA700ADF4C1 /* radAR */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				9F5D055B2F63105B00ADF4C1 /* Exceptions for "radAR" folder in "radAR" target */,
-			);
 			path = radAR;
 			sourceTree = "<group>";
 		};
