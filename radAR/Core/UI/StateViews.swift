@@ -18,7 +18,7 @@ struct LoadingStateView: View {
                     ProgressView()
                         .controlSize(.small)
 
-                    Text("Cargando monitor...")
+                    Text("Cargando monitores...")
                         .font(RadarTheme.Typography.panelSubtitle)
                         .foregroundStyle(RadarTheme.Colors.textSecondary)
                 }

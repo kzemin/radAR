@@ -7,6 +7,20 @@ struct HomeView: View {
     private let compactOverviewTileHeight: CGFloat = 134
     private let expandedOverviewTileHeight: CGFloat = 186
 
+    private enum OverviewGridRow: Identifiable {
+        case expanded(MarketQuote)
+        case pair(MarketQuote, MarketQuote?)
+
+        var id: String {
+            switch self {
+            case let .expanded(quote):
+                return "expanded-\(quote.id)"
+            case let .pair(left, right):
+                return "pair-\(left.id)-\(right?.id ?? "empty")"
+            }
+        }
+    }
+
     init(monitorStore: MarketStore) {
         self.monitorStore = monitorStore
     }
@@ -19,11 +33,51 @@ struct HomeView: View {
         return RadarFormatters.timestamp(updatedAt)
     }
 
-    private var overviewRows: [[MarketQuote]] {
-        let quotes = monitorStore.overviewTiles
-        return stride(from: 0, to: quotes.count, by: 2).map { index in
-            Array(quotes[index..<min(index + 2, quotes.count)])
+    private var overviewGridRows: [OverviewGridRow] {
+        let pairs = stride(from: 0, to: monitorStore.overviewTiles.count, by: 2).map { index in
+            Array(monitorStore.overviewTiles[index..<min(index + 2, monitorStore.overviewTiles.count)])
         }
+
+        let orderedQuotes = pairs.flatMap { pair -> [MarketQuote] in
+            guard
+                let expandedOverviewTileID,
+                let expandedIndex = pair.firstIndex(where: { $0.id == expandedOverviewTileID })
+            else {
+                return pair
+            }
+
+            var reorderedPair = pair
+            let expandedQuote = reorderedPair.remove(at: expandedIndex)
+            reorderedPair.insert(expandedQuote, at: 0)
+            return reorderedPair
+        }
+
+        var rows: [OverviewGridRow] = []
+        var pendingQuotes: [MarketQuote] = []
+
+        for quote in orderedQuotes {
+            if quote.id == expandedOverviewTileID {
+                if let firstPending = pendingQuotes.first {
+                    rows.append(.pair(firstPending, pendingQuotes.count > 1 ? pendingQuotes[1] : nil))
+                    pendingQuotes.removeAll()
+                }
+
+                rows.append(.expanded(quote))
+            } else {
+                pendingQuotes.append(quote)
+
+                if pendingQuotes.count == 2 {
+                    rows.append(.pair(pendingQuotes[0], pendingQuotes[1]))
+                    pendingQuotes.removeAll()
+                }
+            }
+        }
+
+        if let firstPending = pendingQuotes.first {
+            rows.append(.pair(firstPending, pendingQuotes.count > 1 ? pendingQuotes[1] : nil))
+        }
+
+        return rows
     }
 
     var body: some View {
@@ -31,7 +85,7 @@ struct HomeView: View {
             TerminalScreenBackground()
 
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: RadarTheme.Spacing.section) {
+                LazyVStack(alignment: .leading, spacing: RadarTheme.Spacing.section) {
                     content
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -75,11 +129,11 @@ struct HomeView: View {
 
     private var overviewPanel: some View {
         DashboardPanel(
-            title: "Home Monitor",
+            title: "Monitor principal",
             subtitle: "radAR · monitoreo de mercado BCRA",
             metadataItems: [
-                PanelMetadataItem(title: "Universe", value: "\(monitorStore.quoteRows.count)"),
-                PanelMetadataItem(title: "Watch", value: "\(monitorStore.watchlistCount)"),
+                PanelMetadataItem(title: "Universo", value: "\(monitorStore.quoteRows.count)"),
+                PanelMetadataItem(title: "Siguiendo", value: "\(monitorStore.watchlistCount)"),
                 PanelMetadataItem.updated(overviewUpdatedText)
             ],
             badges: [
@@ -88,56 +142,53 @@ struct HomeView: View {
                 PanelBadge("MONITOR", style: .neutral)
             ]
         ) {
-            VStack(alignment: .leading, spacing: RadarTheme.Spacing.compact) {
-                ForEach(Array(overviewRows.enumerated()), id: \.offset) { _, row in
-                    overviewRow(row)
+            Grid(
+                alignment: .leading,
+                horizontalSpacing: RadarTheme.Spacing.compact,
+                verticalSpacing: RadarTheme.Spacing.compact
+            ) {
+                ForEach(overviewGridRows) { row in
+                    switch row {
+                    case let .expanded(quote):
+                        overviewTile(quote, expanded: true)
+                            .frame(
+                                maxWidth: .infinity,
+                                minHeight: expandedOverviewTileHeight,
+                                maxHeight: expandedOverviewTileHeight,
+                                alignment: .leading
+                            )
+                            .gridCellColumns(2)
+
+                    case let .pair(leftQuote, rightQuote):
+                        GridRow {
+                            overviewTile(leftQuote, expanded: false)
+                                .frame(
+                                    maxWidth: .infinity,
+                                    minHeight: compactOverviewTileHeight,
+                                    maxHeight: compactOverviewTileHeight,
+                                    alignment: .leading
+                                )
+
+                            if let rightQuote {
+                                overviewTile(rightQuote, expanded: false)
+                                    .frame(
+                                        maxWidth: .infinity,
+                                        minHeight: compactOverviewTileHeight,
+                                        maxHeight: compactOverviewTileHeight,
+                                        alignment: .leading
+                                    )
+                            } else {
+                                Color.clear
+                                    .frame(maxWidth: .infinity, minHeight: compactOverviewTileHeight, maxHeight: compactOverviewTileHeight)
+                                    .hidden()
+                            }
+                        }
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .animation(.snappy(duration: 0.32, extraBounce: 0.08), value: expandedOverviewTileID)
         }
-    }
-
-    @ViewBuilder
-    private func overviewRow(_ row: [MarketQuote]) -> some View {
-        GeometryReader { geometry in
-            let spacing = RadarTheme.Spacing.compact
-            let compactWidth = (geometry.size.width - spacing) / 2
-
-            if let expandedQuote = row.first(where: { $0.id == expandedOverviewTileID }) {
-                VStack(alignment: .leading, spacing: spacing) {
-                    overviewTile(expandedQuote, expanded: true)
-                        .frame(width: geometry.size.width, height: expandedOverviewTileHeight)
-
-                    if let displacedQuote = row.first(where: { $0.id != expandedQuote.id }) {
-                        HStack(alignment: .top, spacing: spacing) {
-                            overviewTile(displacedQuote, expanded: false)
-                                .frame(width: compactWidth, height: compactOverviewTileHeight)
-
-                            Spacer(minLength: 0)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
-            } else {
-                HStack(alignment: .top, spacing: spacing) {
-                    ForEach(row) { quote in
-                        overviewTile(quote, expanded: false)
-                            .frame(
-                                width: row.count == 1 ? geometry.size.width : compactWidth,
-                                height: compactOverviewTileHeight
-                            )
-                    }
-
-                    if row.count == 1 {
-                        Color.clear
-                            .frame(width: 0, height: compactOverviewTileHeight)
-                    }
-                }
-                .transition(.opacity)
-            }
-        }
-        .frame(height: overviewRowHeight(for: row))
     }
 
     private func overviewTile(_ quote: MarketQuote, expanded: Bool) -> some View {
@@ -162,21 +213,13 @@ struct HomeView: View {
         )
     }
 
-    private func overviewRowHeight(for row: [MarketQuote]) -> CGFloat {
-        if row.contains(where: { $0.id == expandedOverviewTileID }) {
-            return expandedOverviewTileHeight + (row.count > 1 ? RadarTheme.Spacing.compact + compactOverviewTileHeight : 0)
-        }
-
-        return compactOverviewTileHeight
-    }
-
     @ViewBuilder
     private var detailPanel: some View {
         if let quote = monitorStore.selectedQuote, let metric = monitorStore.selectedMetric {
             @Bindable var monitorStore = monitorStore
 
             DashboardPanel(
-                title: "Detail Monitor",
+                title: "Monitor expandido",
                 metadataItems: [
                     PanelMetadataItem(title: "Range", value: monitorStore.selectedRange.rawValue),
                     PanelMetadataItem(title: "Points", value: "\(monitorStore.visibleSeries.count)"),
@@ -223,8 +266,7 @@ struct HomeView: View {
             title: "Watchlist",
             subtitle: "Seguimiento local de variables priorizadas",
             metadataItems: [
-                PanelMetadataItem(title: "Saved", value: "\(monitorStore.watchlistCount)"),
-                PanelMetadataItem(title: "Shown", value: "\(monitorStore.watchlistQuotes.count)"),
+                PanelMetadataItem(title: "Siguiendo", value: "\(monitorStore.watchlistCount)"),
                 PanelMetadataItem.updated(overviewUpdatedText)
             ],
             badges: [
@@ -273,10 +315,10 @@ struct HomeView: View {
 
     private var quotesPanel: some View {
         DashboardPanel(
-            title: "Market Tape",
+            title: "Tasas y FX",
             subtitle: "Flujo comprimido de cotizaciones y tasas destacadas",
             metadataItems: [
-                PanelMetadataItem(title: "Rows", value: "\(monitorStore.quoteRows.count)"),
+                PanelMetadataItem(title: "Filas", value: "\(monitorStore.quoteRows.count)"),
                 PanelMetadataItem.updated(overviewUpdatedText)
             ],
             badges: [
@@ -313,10 +355,10 @@ struct HomeView: View {
 
     private var variablesPanel: some View {
         DashboardPanel(
-            title: "Macro Tape",
+            title: "Monitor Macro",
             subtitle: "Variables monetarias, de liquidez y contexto",
             metadataItems: [
-                PanelMetadataItem(title: "Rows", value: "\(monitorStore.variableRows.count)"),
+                PanelMetadataItem(title: "Filas", value: "\(monitorStore.variableRows.count)"),
                 PanelMetadataItem.updated(overviewUpdatedText)
             ],
             badges: []

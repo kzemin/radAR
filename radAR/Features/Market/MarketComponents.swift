@@ -178,10 +178,6 @@ struct MarketOverviewTileView: View {
                 HStack {
                     PanelTimestamp(value: RadarFormatters.shortTime(updatedAt))
                     Spacer()
-
-                    if isSelected {
-                        StatusChip(title: "ACTIVE", style: .accent)
-                    }
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 7)

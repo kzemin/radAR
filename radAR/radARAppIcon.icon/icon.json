@@ -9,8 +9,21 @@
           "blend-mode" : "normal",
           "fill" : "automatic",
           "glass" : false,
+          "hidden" : true,
           "image-name" : "radAR_text.png",
           "name" : "radAR_text",
+          "position" : {
+            "scale" : 0.84,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "glass" : false,
+          "image-name" : "radARnuevoletra.png",
+          "name" : "radARnuevoletra",
           "position" : {
             "scale" : 0.84,
             "translation-in-points" : [
@@ -32,16 +45,9 @@
     {
       "layers" : [
         {
-          "fill-specializations" : [
-            {
-              "appearance" : "tinted",
-              "value" : "none"
-            }
-          ],
           "glass" : false,
-          "hidden" : false,
-          "image-name" : "radAR_fondo.png",
-          "name" : "radAR_fondo"
+          "image-name" : "radARnuevofondo.png",
+          "name" : "radARnuevofondo"
         }
       ],
       "shadow" : {

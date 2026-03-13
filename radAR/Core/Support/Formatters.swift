@@ -2,6 +2,26 @@ import Foundation
 
 enum RadarFormatters {
     private static let locale = Locale(identifier: "es_AR")
+    private static let posixLocale = Locale(identifier: "en_US_POSIX")
+    private static let argentinaTimeZone = TimeZone(identifier: "America/Argentina/Buenos_Aires") ?? .current
+    private static let utcTimeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+    private static let shortTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = posixLocale
+        formatter.timeZone = argentinaTimeZone
+        formatter.dateFormat = "h:mma"
+        return formatter
+    }()
+
+    private static let timestampDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = posixLocale
+        formatter.timeZone = argentinaTimeZone
+        formatter.dateFormat = "dd-MMM"
+        return formatter
+    }()
 
     static func currency(_ value: Double?, code: String = "ARS") -> String {
         guard let value else {
@@ -116,28 +136,35 @@ enum RadarFormatters {
     }
 
     static func timestamp(_ date: Date) -> String {
-        date.formatted(
-            .dateTime
-                .day(.twoDigits)
-                .month(.abbreviated)
-                .hour()
-                .minute()
-                .locale(locale)
-        )
+        if isDateOnlySource(date) {
+            return shortDate(date).uppercased()
+        }
+
+        return "\(timestampDateFormatter.string(from: date).uppercased()), \(shortTime(date))"
     }
 
     static func shortTime(_ date: Date) -> String {
-        date.formatted(
-            .dateTime
-                .hour()
-                .minute()
-                .locale(locale)
-        )
+        if isDateOnlySource(date) {
+            return shortDate(date).uppercased()
+        }
+
+        return shortTimeFormatter
+            .string(from: date)
+            .replacingOccurrences(of: "AM", with: "A.M.")
+            .replacingOccurrences(of: "PM", with: "P.M.")
     }
 
     private static func compactSymbols(_ value: String) -> String {
         value
             .replacingOccurrences(of: "\u{00A0}", with: "")
             .replacingOccurrences(of: " ", with: "")
+    }
+
+    private static func isDateOnlySource(_ date: Date) -> Bool {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = utcTimeZone
+
+        let components = calendar.dateComponents([.hour, .minute, .second], from: date)
+        return components.hour == 0 && components.minute == 0 && components.second == 0
     }
 }
