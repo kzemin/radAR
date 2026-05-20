@@ -14,7 +14,7 @@ enum StatusChipStyle {
     var foregroundColor: Color {
         switch self {
         case .neutral:
-            return RadarTheme.Colors.textSecondary
+            return RadarTheme.Colors.textPrimary
         case .accent:
             return RadarTheme.Colors.accent
         case .positive:
@@ -28,18 +28,18 @@ enum StatusChipStyle {
         case .alert:
             return RadarTheme.Colors.warning
         case .category:
-            return Color(red: 0.78, green: 0.84, blue: 0.92)
+            return RadarTheme.Colors.textPrimary
         case .info:
             return RadarTheme.Colors.info
         }
     }
 
     var backgroundColor: Color {
-        foregroundColor.opacity(0.12)
+        RadarTheme.Colors.surface
     }
 
     var borderColor: Color {
-        foregroundColor.opacity(0.35)
+        foregroundColor
     }
 }
 

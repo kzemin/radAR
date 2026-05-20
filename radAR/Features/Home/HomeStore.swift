@@ -33,6 +33,7 @@ final class HomeStore {
     }
 
     func refresh() async {
+        let previousDashboard = state.value
         let settings = settingsStorage.load()
         usesCompactNumbers = settings.useCompactNumbers
         state = .loading
@@ -40,11 +41,11 @@ final class HomeStore {
         do {
             async let overviewTask = marketService.fetchOverview()
             async let watchlistTask = favoritesStore.favorites(in: .marketWatchlist)
-            async let savingsTask = transparencyService.fetchProducts(for: .savingsAccount)
-            async let packagesTask = transparencyService.fetchProducts(for: .package)
-            async let termDepositsTask = transparencyService.fetchProducts(for: .termDeposit)
-            async let personalLoansTask = transparencyService.fetchProducts(for: .personalLoan)
-            async let creditCardsTask = transparencyService.fetchProducts(for: .creditCard)
+            async let savingsTask = fetchProductsOrEmpty(for: .savingsAccount)
+            async let packagesTask = fetchProductsOrEmpty(for: .package)
+            async let termDepositsTask = fetchProductsOrEmpty(for: .termDeposit)
+            async let personalLoansTask = fetchProductsOrEmpty(for: .personalLoan)
+            async let creditCardsTask = fetchProductsOrEmpty(for: .creditCard)
 
             let overview = try await overviewTask
             let watchlistIDs = await watchlistTask
@@ -76,7 +77,7 @@ final class HomeStore {
             )
             let movers = makeMovers(from: overview)
 
-            guard !macroSummary.isEmpty, !watchlist.isEmpty else {
+            guard !macroSummary.isEmpty else {
                 state = .empty("Todavía no hay suficiente información para armar el monitor principal.")
                 return
             }
@@ -92,9 +93,28 @@ final class HomeStore {
                 )
             )
         } catch let error as AppError {
-            state = .failed(error)
+            if let previousDashboard {
+                state = .loaded(previousDashboard)
+            } else {
+                state = .failed(error)
+            }
         } catch {
-            state = .failed(.service("No pudimos cargar el monitor global."))
+            if let previousDashboard {
+                state = .loaded(previousDashboard)
+            } else {
+                state = .failed(.service("No pudimos cargar el monitor global."))
+            }
+        }
+    }
+
+    private func fetchProductsOrEmpty(for category: ProductCategory) async -> [FinancialProduct] {
+        do {
+            return try await transparencyService.fetchProducts(for: category)
+        } catch {
+#if DEBUG
+            print("[radAR][Home] fallback to empty products for \(category.rawValue): \(error.localizedDescription)")
+#endif
+            return []
         }
     }
 

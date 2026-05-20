@@ -14,11 +14,11 @@ struct TerminalButton: View {
     private var foregroundColor: Color {
         switch style {
         case .primary:
-            return RadarTheme.Colors.background
+            return RadarTheme.Colors.surface
         case .secondary:
             return RadarTheme.Colors.accent
         case .ghost:
-            return RadarTheme.Colors.textSecondary
+            return RadarTheme.Colors.textPrimary
         }
     }
 
@@ -27,7 +27,7 @@ struct TerminalButton: View {
         case .primary:
             return RadarTheme.Colors.accent
         case .secondary:
-            return RadarTheme.Colors.surfaceMuted
+            return RadarTheme.Colors.surface
         case .ghost:
             return .clear
         }
@@ -38,9 +38,9 @@ struct TerminalButton: View {
         case .primary:
             return RadarTheme.Colors.accent
         case .secondary:
-            return RadarTheme.Colors.border
+            return RadarTheme.Colors.accent
         case .ghost:
-            return RadarTheme.Colors.separator
+            return RadarTheme.Colors.border
         }
     }
 

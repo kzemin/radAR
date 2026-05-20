@@ -1,6 +1,22 @@
 import Foundation
 
 struct BCRAMarketService: MarketServicing {
+    private static let argentinaTimeZone = TimeZone(identifier: "America/Argentina/Buenos_Aires") ?? .gmt
+    private static let argentinaCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = Self.argentinaTimeZone
+        return calendar
+    }()
+
+    private static let argentinaDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Self.argentinaCalendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = Self.argentinaTimeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
     private let apiClient: any APIClient
 
     init(apiClient: any APIClient) {
@@ -153,21 +169,26 @@ struct BCRAMarketService: MarketServicing {
     }
 
     private func fetchExchangeRateHistory() async throws -> [String: [BCRAExchangeRateHistoryEntryDTO]] {
-        try await withThrowingTaskGroup(of: (String, [BCRAExchangeRateHistoryEntryDTO]).self) { group in
+        await withTaskGroup(of: (String, [BCRAExchangeRateHistoryEntryDTO]).self) { group in
             for definition in quoteDefinitions {
                 guard case let .exchangeRate(code) = definition.source else {
                     continue
                 }
 
                 group.addTask {
-                    let history = try await fetchExchangeRateHistory(for: code)
-                    return (code, history)
+                    do {
+                        let history = try await fetchExchangeRateHistory(for: code)
+                        return (code, history)
+                    } catch {
+                        logPartialFailure("serie cambiaria \(code)", error: error)
+                        return (code, [])
+                    }
                 }
             }
 
             var results: [String: [BCRAExchangeRateHistoryEntryDTO]] = [:]
 
-            for try await (code, history) in group {
+            for await (code, history) in group {
                 results[code] = history
             }
 
@@ -176,17 +197,22 @@ struct BCRAMarketService: MarketServicing {
     }
 
     private func fetchVariableSeries() async throws -> [Int: [BCRAMonetaryPointDTO]] {
-        try await withThrowingTaskGroup(of: (Int, [BCRAMonetaryPointDTO]).self) { group in
+        await withTaskGroup(of: (Int, [BCRAMonetaryPointDTO]).self) { group in
             for id in quoteVariableIDs {
                 group.addTask {
-                    let history = try await fetchVariableSeries(for: id)
-                    return (id, history)
+                    do {
+                        let history = try await fetchVariableSeries(for: id)
+                        return (id, history)
+                    } catch {
+                        logPartialFailure("serie monetaria \(id)", error: error)
+                        return (id, [])
+                    }
                 }
             }
 
             var results: [Int: [BCRAMonetaryPointDTO]] = [:]
 
-            for try await (id, history) in group {
+            for await (id, history) in group {
                 results[id] = history
             }
 
@@ -249,16 +275,17 @@ struct BCRAMarketService: MarketServicing {
     }
 
     private var oneYearAgoString: String {
-        let date = Calendar(identifier: .gregorian).date(byAdding: .day, value: -365, to: Date()) ?? Date()
+        let date = Self.argentinaCalendar.date(byAdding: .day, value: -365, to: Date()) ?? Date()
         return formattedDate(date)
     }
 
     private func formattedDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
+        Self.argentinaDateFormatter.string(from: date)
+    }
+
+    private func logPartialFailure(_ context: String, error: Error) {
+#if DEBUG
+        print("[radAR][BCRA] partial failure in \(context): \(error.localizedDescription)")
+#endif
     }
 }

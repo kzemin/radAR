@@ -160,6 +160,7 @@ final class CompareStore {
     }
 
     func refresh() async {
+        let previousProducts = state.value
         state = .loading
 
         do {
@@ -175,9 +176,17 @@ final class CompareStore {
                 ? .empty("No encontramos productos para la categoría seleccionada.")
                 : .loaded(products)
         } catch let error as AppError {
-            state = .failed(error)
+            if let previousProducts {
+                state = .loaded(previousProducts)
+            } else {
+                state = .failed(error)
+            }
         } catch {
-            state = .failed(.service("No pudimos cargar la comparación de productos."))
+            if let previousProducts {
+                state = .loaded(previousProducts)
+            } else {
+                state = .failed(.service("No pudimos cargar la comparación de productos."))
+            }
         }
     }
 

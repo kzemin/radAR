@@ -2,6 +2,7 @@ import Foundation
 
 enum AppTab: Hashable {
     case home
+    case mapa
     case compare
     case market
     case settings
@@ -10,6 +11,8 @@ enum AppTab: Hashable {
         switch self {
         case .home:
             "Home"
+        case .mapa:
+            "Mapa"
         case .compare:
             "Compare"
         case .market:
@@ -23,6 +26,8 @@ enum AppTab: Hashable {
         switch self {
         case .home:
             "house"
+        case .mapa:
+            "map"
         case .compare:
             "rectangle.split.3x1"
         case .market:

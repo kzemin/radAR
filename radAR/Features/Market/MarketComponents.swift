@@ -166,9 +166,12 @@ struct MarketOverviewTileView: View {
                     MiniSparkline(
                         points: sparklinePoints,
                         trend: percentageChange,
-                        showsArea: true
+                        showsArea: true,
+                        lineWidth: isExpanded ? 1.7 : 1.35,
+                        verticalPaddingRatio: isExpanded ? 0.08 : 0.18,
+                        minimumPaddingRatio: isExpanded ? 0.0018 : 0.0035
                     )
-                    .frame(width: isExpanded ? 112 : 74, height: isExpanded ? 40 : 32)
+                    .frame(width: isExpanded ? 120 : 74, height: isExpanded ? 48 : 32)
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 8)
@@ -195,13 +198,10 @@ struct MarketOverviewTileView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
-            .background(RadarTheme.Colors.surface.opacity(0.001))
+            .background(RadarTheme.Colors.surface)
             .overlay(
                 Rectangle()
-                    .stroke(
-                        isSelected ? RadarTheme.Colors.accent : RadarTheme.Colors.border,
-                        lineWidth: 1
-                    )
+                    .stroke(RadarTheme.Colors.border, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

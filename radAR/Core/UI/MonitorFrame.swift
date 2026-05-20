@@ -9,7 +9,7 @@ struct MonitorFrame<Content: View>: View {
 
     var body: some View {
         content
-            .background(RadarTheme.Colors.surface.opacity(0.001))
+            .background(RadarTheme.Colors.surface)
             .overlay(
                 Rectangle()
                     .stroke(RadarTheme.Colors.border, lineWidth: 1)

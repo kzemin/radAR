@@ -70,6 +70,7 @@ final class URLSessionAPIClient: APIClient {
         if case .cacheFirst = request.cachePolicy,
            let cachedData = await cacheStore.data(for: request.cacheKey),
            let decoded = try? decoder.decode(Response.self, from: cachedData) {
+            logCacheHit(for: request, stale: false)
             return decoded
         }
 
@@ -89,6 +90,14 @@ final class URLSessionAPIClient: APIClient {
             if case .networkWithCacheFallback = request.cachePolicy,
                let cachedData = await cacheStore.data(for: request.cacheKey),
                let decoded = try? decoder.decode(Response.self, from: cachedData) {
+                logCacheHit(for: request, stale: false)
+                return decoded
+            }
+
+            if case .networkWithCacheFallback = request.cachePolicy,
+               let staleData = await cacheStore.staleData(for: request.cacheKey),
+               let decoded = try? decoder.decode(Response.self, from: staleData) {
+                logCacheHit(for: request, stale: true)
                 return decoded
             }
 
@@ -106,11 +115,14 @@ final class URLSessionAPIClient: APIClient {
         for attempt in 0...retryPolicy.maxRetries {
             do {
                 let urlRequest = try requestBuilder.build(for: request)
+                logRequest(urlRequest, attempt: attempt)
                 let (data, response) = try await session.data(for: urlRequest)
 
                 guard let httpResponse = response as? HTTPURLResponse else {
                     throw NetworkError.invalidResponse
                 }
+
+                logResponse(httpResponse, data: data)
 
                 guard (200...299).contains(httpResponse.statusCode) else {
                     throw NetworkError.httpStatus(httpResponse.statusCode)
@@ -138,5 +150,32 @@ final class URLSessionAPIClient: APIClient {
         }
 
         throw lastError ?? .invalidResponse
+    }
+
+    private func logRequest(_ request: URLRequest, attempt: Int) {
+#if DEBUG
+        guard let url = request.url?.absoluteString else {
+            return
+        }
+
+        print("[radAR][API] -> \(request.httpMethod ?? "GET") \(url) attempt=\(attempt + 1)")
+#endif
+    }
+
+    private func logResponse(_ response: HTTPURLResponse, data: Data) {
+#if DEBUG
+        let bodyPreview = String(data: data.prefix(240), encoding: .utf8)?
+            .replacingOccurrences(of: "\n", with: " ")
+            ?? "<non-utf8>"
+
+        print("[radAR][API] <- status=\(response.statusCode) url=\(response.url?.absoluteString ?? "-") body=\(bodyPreview)")
+#endif
+    }
+
+    private func logCacheHit<Response>(for request: APIRequest<Response>, stale: Bool) {
+#if DEBUG
+        let freshness = stale ? "stale-cache" : "cache"
+        print("[radAR][API] <- \(freshness) \(request.method.rawValue) \(request.path)")
+#endif
     }
 }

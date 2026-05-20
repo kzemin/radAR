@@ -63,11 +63,11 @@ struct AlertTag: View {
         .padding(.vertical, 4)
         .background(
             Rectangle()
-                .fill(severity.color.opacity(0.12))
+                .fill(RadarTheme.Colors.surface)
         )
         .overlay(
             Rectangle()
-                .stroke(severity.color.opacity(0.34), lineWidth: 1)
+                .stroke(severity.color, lineWidth: 1)
         )
     }
 }

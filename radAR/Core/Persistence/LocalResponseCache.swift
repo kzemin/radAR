@@ -14,18 +14,20 @@ actor LocalResponseCache {
     }
 
     func data(for key: String) -> Data? {
-        let storageKey = storageKey(for: key)
-        guard let rawData = defaults.data(forKey: storageKey),
-              let entry = try? JSONDecoder().decode(Entry.self, from: rawData) else {
+        guard let entry = entry(for: key) else {
             return nil
         }
 
         guard entry.expirationDate > .now else {
-            defaults.removeObject(forKey: storageKey)
+            defaults.removeObject(forKey: storageKey(for: key))
             return nil
         }
 
         return entry.payload
+    }
+
+    func staleData(for key: String) -> Data? {
+        entry(for: key)?.payload
     }
 
     func insert(_ data: Data, for key: String, ttl: TimeInterval) {
@@ -51,6 +53,16 @@ actor LocalResponseCache {
         defaults.dictionaryRepresentation().keys
             .filter { $0.hasPrefix(keyPrefix) }
             .count
+    }
+
+    private func entry(for key: String) -> Entry? {
+        let storageKey = storageKey(for: key)
+        guard let rawData = defaults.data(forKey: storageKey),
+              let entry = try? JSONDecoder().decode(Entry.self, from: rawData) else {
+            return nil
+        }
+
+        return entry
     }
 
     private func storageKey(for key: String) -> String {

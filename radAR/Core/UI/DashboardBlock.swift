@@ -56,6 +56,10 @@ struct PanelContainer<Header: View, Content: View>: View {
         .padding(style.padding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(style.backgroundColor)
+        .overlay(
+            Rectangle()
+                .stroke(RadarTheme.Colors.border, lineWidth: 1)
+        )
     }
 }
 

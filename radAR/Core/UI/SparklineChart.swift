@@ -6,6 +6,8 @@ struct MiniSparkline: View {
     var trend: Double?
     var showsArea = false
     var lineWidth: CGFloat = 1.35
+    var verticalPaddingRatio: Double = 0.18
+    var minimumPaddingRatio: Double = 0.0035
 
     private var lineColor: Color {
         guard let trend else {
@@ -23,27 +25,44 @@ struct MiniSparkline: View {
         return RadarTheme.Colors.textSecondary
     }
 
+    private var yDomain: ClosedRange<Double> {
+        let values = points.map(\.value)
+        guard let minValue = values.min(), let maxValue = values.max() else {
+            return 0...1
+        }
+
+        let span = maxValue - minValue
+        let padding = max(span * verticalPaddingRatio, max(abs(maxValue), 1) * minimumPaddingRatio)
+
+        if span < 0.0001 {
+            return (minValue - padding)...(maxValue + padding)
+        }
+
+        return (minValue - padding)...(maxValue + padding)
+    }
+
     var body: some View {
         Chart(points) { point in
             LineMark(
                 x: .value("Fecha", point.date),
                 y: .value("Valor", point.value)
             )
-            .interpolationMethod(.catmullRom)
+            .interpolationMethod(.monotone)
             .lineStyle(.init(lineWidth: lineWidth))
             .foregroundStyle(lineColor)
 
             if showsArea {
                 AreaMark(
                     x: .value("Fecha", point.date),
-                    y: .value("Valor", point.value)
+                    yStart: .value("Base", yDomain.lowerBound),
+                    yEnd: .value("Valor", point.value)
                 )
-                .interpolationMethod(.catmullRom)
+                .interpolationMethod(.monotone)
                 .foregroundStyle(
                     LinearGradient(
                         colors: [
-                            lineColor.opacity(0.20),
-                            lineColor.opacity(0.02)
+                            lineColor.opacity(0.18),
+                            lineColor.opacity(0.01)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -51,6 +70,7 @@ struct MiniSparkline: View {
                 )
             }
         }
+        .chartYScale(domain: yDomain)
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
         .chartLegend(.hidden)

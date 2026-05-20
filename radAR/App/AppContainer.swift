@@ -61,4 +61,9 @@ struct AppContainer {
             favoritesStore: favoritesStore
         )
     }
+
+    @MainActor
+    func makeMapaStore() -> MapaStore {
+        MapaStore()
+    }
 }

@@ -135,6 +135,25 @@ enum RadarFormatters {
         )
     }
 
+    /// Compact relative age in Spanish ("recién", "hace 12 min", "hace 20h", "hace 2d").
+    /// Tuned for a feed that refreshes within ~24h.
+    static func relativeShort(_ date: Date, now: Date = Date()) -> String {
+        let seconds = max(0, now.timeIntervalSince(date))
+        if seconds < 60 {
+            return "recién"
+        }
+        let minutes = Int(seconds / 60)
+        if minutes < 60 {
+            return "hace \(minutes) min"
+        }
+        let hours = Int(seconds / 3600)
+        if hours < 24 {
+            return "hace \(hours)h"
+        }
+        let days = Int(seconds / 86_400)
+        return "hace \(days)d"
+    }
+
     static func timestamp(_ date: Date) -> String {
         if isDateOnlySource(date) {
             return shortDate(date).uppercased()

@@ -1,0 +1,15 @@
+{
+  "originHash" : "de394a5cd47ebdc5c3119a44fa973ec1486692c288012ed4e3f8db380b66ca76",
+  "pins" : [
+    {
+      "identity" : "geojsonkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/maparoni/GeoJSONKit.git",
+      "state" : {
+        "revision" : "a5aabe3a1edddbcf14b49b3fa5be1ddd48dff7c8",
+        "version" : "0.6.0"
+      }
+    }
+  ],
+  "version" : 3
+}

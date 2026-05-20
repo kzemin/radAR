@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		B100A1B2C3D40000A1B2C3D1 /* GeoJSONKit in Frameworks */ = {isa = PBXBuildFile; productRef = B100A1B2C3D40000A1B2C3D3 /* GeoJSONKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		9F5D03CB2F625EA700ADF4C1 /* radAR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = radAR.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B100A1B2C3D40000A1B2C3D1 /* GeoJSONKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 			);
 			name = radAR;
 			packageProductDependencies = (
+				B100A1B2C3D40000A1B2C3D3 /* GeoJSONKit */,
 			);
 			productName = radAR;
 			productReference = 9F5D03CB2F625EA700ADF4C1 /* radAR.app */;
@@ -107,6 +113,9 @@
 			);
 			mainGroup = 9F5D03C22F625EA700ADF4C1;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B100A1B2C3D40000A1B2C3D2 /* XCRemoteSwiftPackageReference "GeoJSONKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9F5D03CC2F625EA700ADF4C1 /* Products */;
 			projectDirPath = "";
@@ -362,6 +371,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B100A1B2C3D40000A1B2C3D2 /* XCRemoteSwiftPackageReference "GeoJSONKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/maparoni/GeoJSONKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.6.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B100A1B2C3D40000A1B2C3D3 /* GeoJSONKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B100A1B2C3D40000A1B2C3D2 /* XCRemoteSwiftPackageReference "GeoJSONKit" */;
+			productName = GeoJSONKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9F5D03C32F625EA700ADF4C1 /* Project object */;
 }

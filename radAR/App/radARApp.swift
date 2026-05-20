@@ -12,7 +12,6 @@ struct radARApp: App {
                 .environment(\.appContainer, container)
                 .environment(\.locale, locale)
                 .tint(RadarTheme.Colors.accent)
-                .preferredColorScheme(.dark)
         }
     }
 }
