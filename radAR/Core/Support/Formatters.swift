@@ -89,43 +89,6 @@ enum RadarFormatters {
         return value >= 0 ? "+\(formatted)%" : "\(formatted)%"
     }
 
-    static func metric(_ metric: FinancialMetric, compact: Bool = false) -> String {
-        switch metric.format {
-        case let .currency(code):
-            return currency(metric.value, code: code)
-        case .percentage:
-            return rate(metric.value)
-        case let .number(unit):
-            let formatted = compact
-                ? RadarFormatters.compact(metric.value)
-                : RadarFormatters.number(metric.value)
-
-            guard let unit else {
-                return formatted
-            }
-
-            return "\(formatted) \(unit)"
-        }
-    }
-
-    static func change(_ change: FinancialChange, compact: Bool = false) -> String {
-        switch change.format {
-        case .percentage:
-            return signedRate(change.value)
-        case let .currency(code):
-            let absolute = abs(change.value)
-            let formatted = currency(absolute, code: code)
-            return change.value >= 0 ? "+\(formatted)" : "-\(formatted)"
-        case let .number(unit):
-            let absolute = abs(change.value)
-            let formatted = compact
-                ? RadarFormatters.compact(absolute)
-                : RadarFormatters.number(absolute)
-            let value = unit.map { "\(formatted) \($0)" } ?? formatted
-            return change.value >= 0 ? "+\(value)" : "-\(value)"
-        }
-    }
-
     static func shortDate(_ date: Date) -> String {
         date.formatted(
             .dateTime
