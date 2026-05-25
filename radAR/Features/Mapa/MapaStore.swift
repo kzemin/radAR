@@ -5,7 +5,14 @@ import Observation
 @MainActor
 @Observable
 final class MapaStore {
-    private(set) var events: [NewsEvent]
+    enum LoadState: Equatable {
+        case loading
+        case loaded
+        case failed(String)
+    }
+
+    private(set) var events: [NewsEvent] = []
+    private(set) var loadState: LoadState = .loading
     private(set) var provinces: [ProvinceShape]
     private(set) var argentinaExtras: [BackdropShape]
     private(set) var worldCountries: [BackdropShape]
@@ -14,25 +21,34 @@ final class MapaStore {
     var calloutEventID: NewsEvent.ID?
     var cameraTargetProvince: ArgentineProvince?
     var cameraTargetCoordinate: CLLocationCoordinate2D?
-    var cameraNonce: Int
-    var isDrawerExpanded: Bool
+    var cameraNonce: Int = 0
+    var isDrawerExpanded: Bool = false
+
+    private let newsService: NewsService
 
     init(
-        events: [NewsEvent] = MockNewsData.seed(),
+        newsService: NewsService = MockNewsService(),
         provinces: [ProvinceShape] = ProvinceGeometryLoader.load(),
         argentinaExtras: [BackdropShape] = ExtrasGeometryLoader.load(),
         worldCountries: [BackdropShape] = WorldGeometryLoader.load()
     ) {
-        self.events = events.sorted { $0.timestamp > $1.timestamp }
+        self.newsService = newsService
         self.provinces = provinces
         self.argentinaExtras = argentinaExtras
         self.worldCountries = worldCountries
-        self.selectedEventID = nil
-        self.calloutEventID = nil
-        self.cameraTargetProvince = nil
-        self.cameraTargetCoordinate = nil
-        self.cameraNonce = 0
-        self.isDrawerExpanded = false
+    }
+
+    /// Loads the feed through `NewsService`. Call from the view's `.task`; safe to
+    /// re-run (e.g. pull-to-refresh later).
+    func load() async {
+        loadState = .loading
+        do {
+            let fetched = try await newsService.fetchEvents()
+            events = fetched.sorted { $0.timestamp > $1.timestamp }
+            loadState = .loaded
+        } catch {
+            loadState = .failed("No se pudieron cargar las noticias.")
+        }
     }
 
     var selectedEvent: NewsEvent? {

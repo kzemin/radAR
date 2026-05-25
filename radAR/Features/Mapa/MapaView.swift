@@ -29,6 +29,7 @@ struct MapaView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .task { await store.load() }
     }
 
     // MARK: - Layers
