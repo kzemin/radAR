@@ -46,8 +46,17 @@ struct GeoBounds: Hashable {
 }
 
 enum ProvinceGeometryLoader {
+    /// CABA is a geographic speck; the enclave — its own polygon plus the matching
+    /// notch carved into Buenos Aires — is inflated by this factor around `cabaCenter`
+    /// so the city is legible and the BA cutout stays aligned with it. Disproportionate
+    /// on purpose. (Center + radius are tuned to this dataset's geometry: CABA's outline
+    /// and BA's notch both sit within ~0.13°, BA's next coast point is ~0.22° out.)
+    static let cabaInflation: Double = 2.0
+    private static let cabaCenter = CLLocationCoordinate2D(latitude: -34.6483, longitude: -58.4377)
+    private static let cabaEnclaveRadius: Double = 0.18
+
     static func load(in bundle: Bundle = .main) -> [ProvinceShape] {
-        GeoJSONLoading.features(named: "argentina-provinces", in: bundle).compactMap { feature in
+        GeoJSONLoading.features(named: "argentina-provinces", in: bundle).compactMap { feature -> ProvinceShape? in
             guard
                 let code = feature.properties?["code"] as? String,
                 let province = ArgentineProvince(rawValue: code)
@@ -56,16 +65,41 @@ enum ProvinceGeometryLoader {
             let ringPositions = GeoJSONLoading.polygonRings(from: feature.geometry)
             guard !ringPositions.isEmpty else { return nil }
 
-            var bounds = GeoBounds.empty
-            let rings: [[CLLocationCoordinate2D]] = ringPositions.map { ring in
-                ring.map { position in
-                    bounds.extend(lat: position.latitude, lon: position.longitude)
-                    return CLLocationCoordinate2D(latitude: position.latitude, longitude: position.longitude)
-                }
+            let rings = ringPositions.map { ring in
+                ring.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
             }
-
-            return ProvinceShape(province: province, rings: rings, bounds: bounds)
+            return makeShape(province: province, rings: rings)
         }
+    }
+
+    /// Builds a shape, inflating the CABA enclave for CABA + Buenos Aires so the city
+    /// and its cutout render larger than their true (tiny) footprint and stay aligned.
+    private static func makeShape(
+        province: ArgentineProvince,
+        rings rawRings: [[CLLocationCoordinate2D]]
+    ) -> ProvinceShape {
+        let inflates = province == .caba || province == .buenosAires
+        var bounds = GeoBounds.empty
+        let rings = rawRings.map { ring in
+            ring.map { coord -> CLLocationCoordinate2D in
+                let c = inflates ? inflateEnclave(coord) : coord
+                bounds.extend(lat: c.latitude, lon: c.longitude)
+                return c
+            }
+        }
+        return ProvinceShape(province: province, rings: rings, bounds: bounds)
+    }
+
+    /// Scales a coordinate away from `cabaCenter` by `cabaInflation` when it falls
+    /// inside the enclave radius — i.e. it's part of CABA's outline or BA's notch.
+    private static func inflateEnclave(_ coord: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
+        let dLat = coord.latitude - cabaCenter.latitude
+        let dLon = coord.longitude - cabaCenter.longitude
+        guard (dLat * dLat + dLon * dLon) < cabaEnclaveRadius * cabaEnclaveRadius else { return coord }
+        return CLLocationCoordinate2D(
+            latitude: cabaCenter.latitude + dLat * cabaInflation,
+            longitude: cabaCenter.longitude + dLon * cabaInflation
+        )
     }
 
     static var countryBounds: GeoBounds {

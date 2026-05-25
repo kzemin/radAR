@@ -18,6 +18,10 @@ struct ArgentinaMapCanvas: View {
     @State private var pinchStartZoom: Double?
     @State private var canvasSize: CGSize = .zero
 
+    // Heartbeat for the time-based pin fade; bumped every 60s so opacities stay
+    // current without coupling the decay to the camera's animation timeline.
+    @State private var now: Date = Date()
+
     // Hand-rolled camera fly: SwiftUI can't interpolate MapCamera inside a Canvas
     // closure, so we drive smooth transitions via TimelineView + elapsed-time easing.
     @State private var flightSource: MapCamera?
@@ -26,11 +30,6 @@ struct ArgentinaMapCanvas: View {
     private let pinSize: CGFloat = 12
     private let selectedPinSize: CGFloat = 18
     private let pinHitRadius: CGFloat = 26
-    /// Minimum screen-space distance (points) between two rendered pins. Pins
-    /// closer than this to a previously placed pin get suppressed at the current
-    /// zoom so the map doesn't turn into a clump. Zooming in spaces pins out and
-    /// they reappear automatically. Selected + breaking pins win priority.
-    private let minPinSpacing: CGFloat = 28
 
     var body: some View {
         GeometryReader { proxy in
@@ -61,6 +60,12 @@ struct ArgentinaMapCanvas: View {
             }
             .onChange(of: cameraNonce) { _, _ in
                 startFlight()
+            }
+            .task {
+                while !Task.isCancelled {
+                    now = Date()
+                    try? await Task.sleep(for: .seconds(60))
+                }
             }
         }
     }
@@ -239,33 +244,14 @@ struct ArgentinaMapCanvas: View {
     }
 
     private func drawPins(context: inout GraphicsContext, projection: MapProjection) {
-        let prioritized = events.sorted { lhs, rhs in
-            let lhsSelected = lhs.id == selectedEventID
-            let rhsSelected = rhs.id == selectedEventID
-            if lhsSelected != rhsSelected { return lhsSelected }
-
-            let lhsBreaking = lhs.severity == .breaking
-            let rhsBreaking = rhs.severity == .breaking
-            if lhsBreaking != rhsBreaking { return lhsBreaking }
-
-            return lhs.timestamp > rhs.timestamp
-        }
-
-        let minDistanceSq = minPinSpacing * minPinSpacing
-        var placedPoints: [CGPoint] = []
-
-        for event in prioritized {
-            let point = projection.point(for: event.coordinate)
-
-            let tooClose = placedPoints.contains { existing in
-                let dx = existing.x - point.x
-                let dy = existing.y - point.y
-                return (dx * dx + dy * dy) < minDistanceSq
-            }
-            if tooClose { continue }
-            placedPoints.append(point)
-
+        // Positions come from `laidOutPins` (selection-independent); only the paint
+        // order depends on selection, so the selected square sits on top.
+        let entries = laidOutPins(projection: projection)
+        let ordered = entries.filter { $0.event.id != selectedEventID }
+            + entries.filter { $0.event.id == selectedEventID }
+        for (event, point) in ordered {
             let isSelected = event.id == selectedEventID
+            let age = now.timeIntervalSince(event.timestamp)
             let isBreaking = event.severity == .breaking
             let size = isSelected ? selectedPinSize : pinSize
 
@@ -281,12 +267,15 @@ struct ArgentinaMapCanvas: View {
             let stroke: Color
             let strokeWidth: CGFloat
 
+            // Pins stay solid white — age never touches alpha, which would muddy the
+            // square against the dark map. The only time signal is a breaking pin
+            // cooling from orange to white as it ages.
             if isSelected {
                 fill = MapaTheme.Colors.accent
                 stroke = MapaTheme.Colors.textPrimary
                 strokeWidth = 1.5
             } else if isBreaking {
-                fill = MapaTheme.Colors.accent
+                fill = blend(MapaTheme.Colors.pinNormal, MapaTheme.Colors.accent, PinDecay.freshness(age: age))
                 stroke = MapaTheme.Colors.background
                 strokeWidth = 1
             } else {
@@ -298,6 +287,44 @@ struct ArgentinaMapCanvas: View {
             context.fill(pinPath, with: .color(fill))
             context.stroke(pinPath, with: .color(stroke), lineWidth: strokeWidth)
         }
+    }
+
+    /// Visible pins (live, or selected) projected to their true map coordinates, in a
+    /// selection-independent order. Shared by drawing and hit-testing so taps land on
+    /// what's rendered. Every pin stays anchored to the map — overlapping events stack
+    /// at low zoom and separate as you zoom in, exactly like every other pin. No
+    /// screen-space nudging (that made clustered pins drift between provinces on zoom).
+    private func laidOutPins(projection: MapProjection) -> [(event: NewsEvent, point: CGPoint)] {
+        events
+            .sorted { lhs, rhs in
+                let lhsBreaking = lhs.severity == .breaking
+                let rhsBreaking = rhs.severity == .breaking
+                if lhsBreaking != rhsBreaking { return lhsBreaking }
+                return lhs.timestamp > rhs.timestamp
+            }
+            .compactMap { event -> (event: NewsEvent, point: CGPoint)? in
+                let isSelected = event.id == selectedEventID
+                let age = now.timeIntervalSince(event.timestamp)
+                // Selection overrides the fade: a tapped event shows even if aged out.
+                if !isSelected, !PinDecay.isLive(age: age) { return nil }
+                return (event: event, point: projection.point(for: event.coordinate))
+            }
+    }
+
+    /// Linear RGB blend between two colors. `t` 0 → `from`, 1 → `to`.
+    private func blend(_ from: Color, _ to: Color, _ t: Double) -> Color {
+        let f = CGFloat(min(1, max(0, t)))
+        let a = UIColor(from)
+        let b = UIColor(to)
+        var ar: CGFloat = 0, ag: CGFloat = 0, ab: CGFloat = 0, aa: CGFloat = 0
+        var br: CGFloat = 0, bg: CGFloat = 0, bb: CGFloat = 0, ba: CGFloat = 0
+        a.getRed(&ar, green: &ag, blue: &ab, alpha: &aa)
+        b.getRed(&br, green: &bg, blue: &bb, alpha: &ba)
+        return Color(
+            red: Double(ar + (br - ar) * f),
+            green: Double(ag + (bg - ag) * f),
+            blue: Double(ab + (bb - ab) * f)
+        )
     }
 
     private func projectedPath(for shape: ProvinceShape, projection: MapProjection) -> Path {
@@ -319,12 +346,11 @@ struct ArgentinaMapCanvas: View {
         guard canvasSize != .zero else { return }
         let projection = MapProjection(camera: camera, canvasSize: canvasSize)
 
-        let hit = events
-            .map { event -> (NewsEvent, CGFloat) in
-                let p = projection.point(for: event.coordinate)
-                let dx = p.x - location.x
-                let dy = p.y - location.y
-                return (event, sqrt(dx * dx + dy * dy))
+        let hit = laidOutPins(projection: projection)
+            .map { entry -> (NewsEvent, CGFloat) in
+                let dx = entry.point.x - location.x
+                let dy = entry.point.y - location.y
+                return (entry.event, sqrt(dx * dx + dy * dy))
             }
             .filter { $0.1 <= pinHitRadius }
             .min(by: { $0.1 < $1.1 })
