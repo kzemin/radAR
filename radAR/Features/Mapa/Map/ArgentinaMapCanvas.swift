@@ -244,10 +244,13 @@ struct ArgentinaMapCanvas: View {
     }
 
     private func drawPins(context: inout GraphicsContext, projection: MapProjection) {
-        // Positions come from `laidOutPins` (selection-independent); only the paint
-        // order depends on selection, so the selected square sits on top.
+        // Positions come from `laidOutPins` (selection-independent); only paint order
+        // varies. Back → front: normal, then breaking (so a fresh breaking pin sits on
+        // top of an overlapping routine one), then the selected pin on top.
         let entries = laidOutPins(projection: projection)
-        let ordered = entries.filter { $0.event.id != selectedEventID }
+        let nonSelected = entries.filter { $0.event.id != selectedEventID }
+        let ordered = nonSelected.filter { $0.event.severity != .breaking }
+            + nonSelected.filter { $0.event.severity == .breaking }
             + entries.filter { $0.event.id == selectedEventID }
         for (event, point) in ordered {
             let isSelected = event.id == selectedEventID
