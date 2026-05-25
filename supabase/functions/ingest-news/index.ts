@@ -40,6 +40,7 @@ interface FeedItem {
   tier: number;
 }
 interface Tag {
+  relevant: boolean;
   scope: "provincial" | "national";
   province: string; // AR-* code or "none"
   category: string;
@@ -94,6 +95,7 @@ Deno.serve(async () => {
   // Tag + build rows.
   const rows = [];
   let tagFailures = 0;
+  let dropped = 0;
   let firstTagError: string | null = null;
   for (const item of fresh) {
     const result = await tagItem(item);
@@ -103,6 +105,7 @@ Deno.serve(async () => {
       continue;
     }
     const tag = result.tag;
+    if (!tag.relevant) { dropped++; continue; } // no Argentine connection
     const province = tag.scope === "provincial"
       ? (tag.province !== "none" ? tag.province : null)
       : null;
@@ -132,7 +135,7 @@ Deno.serve(async () => {
     if (error) return json({ error: error.message }, 500);
     inserted = count ?? rows.length;
   }
-  return json({ feeds: sources.length, candidates: items.length, backlog: allFresh.length, processed: fresh.length, inserted, tagFailures, firstTagError }, 200);
+  return json({ feeds: sources.length, candidates: items.length, backlog: allFresh.length, processed: fresh.length, dropped, inserted, tagFailures, firstTagError }, 200);
 });
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -181,8 +184,9 @@ function chunk<T>(arr: T[], n: number): T[][] {
   return out;
 }
 async function tagItem(item: FeedItem): Promise<{ tag: Tag } | { error: string }> {
-  const system = `Sos un clasificador de noticias argentinas. Devolvé SOLO el JSON pedido.
-- scope: "national" si la noticia no es de una provincia puntual (p. ej. Congreso sin lugar, dólar, medidas nacionales); si tiene lugar claro, "provincial".
+  const system = `Sos un editor de un mapa de noticias de Argentina. Devolvé SOLO el JSON pedido.
+- relevant: true si la noticia involucra o afecta a Argentina o a argentinos (incluye argentinos o equipos argentinos en el exterior, relaciones exteriores, ayuda argentina a otros países); false si no tiene NINGUNA conexión con Argentina (p. ej. liga alemana sin argentinos, farándula de Hollywood).
+- scope: "provincial" si ocurre en una provincia puntual; "national" si es de alcance nacional o internacional con ángulo argentino, sin una provincia puntual.
 - province: código ISO AR-* de la provincia, o "none" si scope es national. Noticias de Malvinas → "AR-V".
 - category: una de ${CATEGORIES.join(", ")}.
 - severity: "breaking" sólo si es urgente/de último momento; si no, "normal".`;
@@ -202,8 +206,9 @@ async function tagItem(item: FeedItem): Promise<{ tag: Tag } | { error: string }
             schema: {
               type: "object",
               additionalProperties: false,
-              required: ["scope", "province", "category", "severity"],
+              required: ["relevant", "scope", "province", "category", "severity"],
               properties: {
+                relevant: { type: "boolean" },
                 scope: { type: "string", enum: ["provincial", "national"] },
                 province: { type: "string", enum: [...PROVINCE_CODES, "none"] },
                 category: { type: "string", enum: CATEGORIES },
