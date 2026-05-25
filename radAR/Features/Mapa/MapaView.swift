@@ -101,7 +101,6 @@ struct MapaView: View {
             }
         }
         .animation(RadarTheme.Animation.callout, value: store.calloutEventID)
-        .animation(RadarTheme.Animation.selection, value: store.selectedEventID)
     }
 
     private var headerSubtitle: String {

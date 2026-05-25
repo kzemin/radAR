@@ -91,21 +91,31 @@ struct MapaPinCallout: View {
 
     private var bodySection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(event.body)
-                .textStyle(.cardBody)
-                .foregroundStyle(MapaTheme.Colors.textSecondary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(isBodyExpanded ? nil : 8)
-                .truncationMode(.tail)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if isBodyExpanded {
+                ScrollView(.vertical, showsIndicators: true) {
+                    bodyParagraph()
+                }
+                .frame(maxHeight: MapaTheme.Metrics.calloutBodyMaxHeight)
+            } else {
+                bodyParagraph(lineLimit: 8)
+            }
 
             if canExpand {
                 expandButton
             }
         }
         .padding(MapaTheme.Metrics.cardPadding)
-        .animation(RadarTheme.Animation.panel, value: isBodyExpanded)
+    }
+
+    private func bodyParagraph(lineLimit: Int? = nil) -> some View {
+        Text(event.body)
+            .textStyle(.cardBody)
+            .foregroundStyle(MapaTheme.Colors.textSecondary)
+            .multilineTextAlignment(.leading)
+            .lineLimit(lineLimit)
+            .truncationMode(.tail)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var expandButton: some View {
@@ -113,7 +123,7 @@ struct MapaPinCallout: View {
             isBodyExpanded.toggle()
         } label: {
             HStack(spacing: 4) {
-                Text(isBodyExpanded ? "Leer menos" : "Leer más")
+                Text((isBodyExpanded ? "menos" : "más").uppercased())
                     .textStyle(.cardTag)
                     .foregroundStyle(MapaTheme.Colors.info)
 

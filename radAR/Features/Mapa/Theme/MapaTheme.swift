@@ -48,8 +48,12 @@ enum MapaTheme {
     enum Metrics {
         static let cardPadding: CGFloat = 12
         static let overlayInset: CGFloat = 12
-        static let drawerPeekHeight: CGFloat = 156
-        static let drawerExpandedFraction: CGFloat = 0.72
+        /// Max height of the expanded callout body before it scrolls internally —
+        /// keeps a long story from overrunning the map and the drawer.
+        static let calloutBodyMaxHeight: CGFloat = 280
+        static let drawerPeekHeight: CGFloat = 190
+        /// Space kept above the expanded drawer for the ticker + "radAR / ARGENTINA" header.
+        static let drawerTopReserve: CGFloat = 96
         static let cornerRadius: CGFloat = 4
     }
 }

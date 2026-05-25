@@ -25,6 +25,19 @@ extension RadarTheme.TextStyle {
     static let cardTitleLarge = RadarTheme.TextStyle(
         font: RadarTheme.Typography.sansSemibold(16, relativeTo: .headline)
     )
+    /// "Noticias" section header at the top of the bottom drawer.
+    static let drawerTitle = RadarTheme.TextStyle(
+        font: RadarTheme.Typography.sansSemibold(15, relativeTo: .headline)
+    )
+    /// Muted descriptor under the drawer title ("Últimas 24 horas").
+    static let drawerSubtitle = RadarTheme.TextStyle(
+        font: RadarTheme.Typography.sansMedium(11, relativeTo: .caption)
+    )
+    /// Brand sign-off at the end of the drawer list ("radAR · 2026").
+    static let drawerFooter = RadarTheme.TextStyle(
+        font: RadarTheme.Typography.monoMedium(10, relativeTo: .caption2),
+        tracking: 2
+    )
     /// Location subtitle ("Ciudad de Buenos Aires") shown above the title.
     static let cardLocation = RadarTheme.TextStyle(
         font: RadarTheme.Typography.sansMedium(10, relativeTo: .caption2)

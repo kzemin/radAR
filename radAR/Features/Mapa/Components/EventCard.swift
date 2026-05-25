@@ -50,7 +50,7 @@ struct EventCard: View {
             }
             .overlay(
                 Rectangle()
-                    .stroke(isSelected ? MapaTheme.Colors.info : MapaTheme.Colors.border, lineWidth: 1)
+                    .stroke(MapaTheme.Colors.border, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

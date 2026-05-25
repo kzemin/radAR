@@ -10,8 +10,6 @@ extension RadarTheme {
         /// Long transition — 0.65s (camera fly across the country, large reveals).
         static let durationLong: TimeInterval = 0.65
 
-        /// Selection — orange border + pin enlarge + glow appearing.
-        static let selection: SwiftUI.Animation = .easeOut(duration: 0.22)
         /// Fade — overlay opacity in/out, generic dissolves.
         static let fade: SwiftUI.Animation = .easeInOut(duration: 0.16)
         /// Scroll focus — list scrolling a selected card into view.
