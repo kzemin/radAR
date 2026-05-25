@@ -18,6 +18,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 // isn't reliable under the new (publishable/secret) key model.
 const SERVICE_KEY = (Deno.env.get("RADAR_SERVICE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "").trim();
 const OPENAI_API_KEY = (Deno.env.get("OPENAI_API_KEY") ?? "").trim();
+// Optional shared secret — when set, callers (the cron) must send it via the
+// x-cron-secret header. Inert until you set the CRON_SECRET env var.
+const CRON_SECRET = (Deno.env.get("CRON_SECRET") ?? "").trim();
 
 const PROVINCE_CODES = [
   "AR-A", "AR-B", "AR-C", "AR-D", "AR-E", "AR-F", "AR-G", "AR-H", "AR-J", "AR-K",
@@ -47,7 +50,10 @@ interface Tag {
   severity: "normal" | "breaking";
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  if (CRON_SECRET && req.headers.get("x-cron-secret") !== CRON_SECRET) {
+    return json({ error: "unauthorized" }, 401);
+  }
   if (!OPENAI_API_KEY) return json({ error: "OPENAI_API_KEY not set" }, 500);
   if (!SERVICE_KEY) return json({ error: "service key not set — add the RADAR_SERVICE_KEY secret" }, 500);
   const db = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -87,9 +93,12 @@ Deno.serve(async () => {
     const { data } = await db.from("news_events").select("dedup_key").in("dedup_key", batch);
     for (const r of data ?? []) known.add(r.dedup_key);
   }
-  // Cap OpenAI calls per run so the first (all-fresh) invocation completes and
-  // upserts instead of timing out; the backlog drains over later runs / cron ticks.
-  const allFresh = dedupeByLink(items).filter((i) => !known.has(i.link));
+  // Skip items already past the live window — no point spending an OpenAI call to
+  // tag a story that would be expired the moment it's stored. Cap per run so the
+  // first (all-fresh) invocation completes and upserts instead of timing out.
+  const cutoff = Date.now() - LIVE_WINDOW_HOURS * 3_600_000;
+  const allFresh = dedupeByLink(items)
+    .filter((i) => !known.has(i.link) && Date.parse(i.occurredAt) >= cutoff);
   const fresh = allFresh.slice(0, MAX_PER_RUN);
 
   // Tag + build rows.
