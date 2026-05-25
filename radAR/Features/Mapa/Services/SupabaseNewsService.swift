@@ -20,8 +20,12 @@ struct SupabaseNewsService: NewsService {
             url: baseURL.appendingPathComponent("rest/v1/news_events"),
             resolvingAgainstBaseURL: false
         )!
+        // Only fetch events still within their server-computed window, so the map
+        // and the drawer agree on what's live (the app doesn't re-derive the window).
+        let nowISO = ISO8601DateFormatter().string(from: Date())
         components.queryItems = [
             URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "expires_at", value: "gt.\(nowISO)"),
             URLQueryItem(name: "order", value: "occurred_at.desc"),
             URLQueryItem(name: "limit", value: "200"),
         ]
