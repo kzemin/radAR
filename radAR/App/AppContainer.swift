@@ -5,7 +5,7 @@ struct AppContainer {
 
     @MainActor
     static func bootstrap() -> AppContainer {
-        AppContainer(newsService: MockNewsService())
+        AppContainer(newsService: SupabaseNewsService())
     }
 
     @MainActor
