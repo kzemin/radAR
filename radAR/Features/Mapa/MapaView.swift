@@ -97,6 +97,9 @@ struct MapaView: View {
                         .move(edge: .leading)
                             .combined(with: .opacity)
                     )
+                    // Per-event identity: resets the body-expand state between events and
+                    // restores the slide/fade transition when switching pins.
+                    .id(event.id)
                 }
             }
         }
