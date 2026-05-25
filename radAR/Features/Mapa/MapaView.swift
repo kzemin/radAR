@@ -30,6 +30,40 @@ struct MapaView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .task { await store.load() }
+        .overlay { statusOverlay }
+    }
+
+    @ViewBuilder
+    private var statusOverlay: some View {
+        if store.loadState == .loading, store.events.isEmpty {
+            statusPill {
+                ProgressView().tint(MapaTheme.Colors.textSecondary)
+                Text("Cargando noticias…")
+                    .textStyle(.drawerSubtitle)
+                    .foregroundStyle(MapaTheme.Colors.textSecondary)
+            }
+        } else if case let .failed(message) = store.loadState, store.events.isEmpty {
+            statusPill {
+                Text(message)
+                    .textStyle(.drawerSubtitle)
+                    .foregroundStyle(MapaTheme.Colors.textPrimary)
+                Button { Task { await store.load() } } label: {
+                    Text("Reintentar")
+                        .textStyle(.cardTag)
+                        .foregroundStyle(MapaTheme.Colors.info)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func statusPill<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        HStack(spacing: 8) { content() }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(MapaTheme.Colors.surface)
+            .overlay(Rectangle().stroke(MapaTheme.Colors.border, lineWidth: 1))
+            .padding(.bottom, 120)
     }
 
     // MARK: - Layers
