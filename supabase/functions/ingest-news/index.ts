@@ -27,7 +27,7 @@ const PROVINCE_CODES = [
   "AR-L", "AR-M", "AR-N", "AR-P", "AR-Q", "AR-R", "AR-S", "AR-T", "AR-U", "AR-V",
   "AR-W", "AR-X", "AR-Y", "AR-Z",
 ];
-const CATEGORIES = ["politica", "economia", "seguridad", "social", "otro"];
+const CATEGORIES = ["politica", "economia", "seguridad", "social", "deportes", "otro"];
 const LIVE_WINDOW_HOURS = 24; // flat for v1; day-aware window is a follow-on
 const MAX_PER_RUN = 30; // cap OpenAI calls per invocation; backlog drains over runs
 
@@ -194,7 +194,7 @@ function chunk<T>(arr: T[], n: number): T[][] {
 }
 async function tagItem(item: FeedItem): Promise<{ tag: Tag } | { error: string }> {
   const system = `Sos un editor de un mapa de noticias de Argentina. Devolvé SOLO el JSON pedido.
-- relevant: true si la noticia involucra o afecta a Argentina o a argentinos (incluye argentinos o equipos argentinos en el exterior, relaciones exteriores, ayuda argentina a otros países); false si no tiene NINGUNA conexión con Argentina (p. ej. liga alemana sin argentinos, farándula de Hollywood).
+- relevant: true sólo si es periodismo informativo sobre Argentina o argentinos (incluye argentinos o equipos argentinos en el exterior, relaciones exteriores, ayuda argentina a otros países). FALSE si: (a) no tiene NINGUNA conexión con Argentina (p. ej. liga alemana sin argentinos, farándula de Hollywood); (b) es contenido promocional/no informativo aun siendo argentino: trivias o juegos ("jugá", "sumá puntos", "competí", "ganá un auto/premio/viaje"), sorteos, promos de suscripción o newsletter, publicidad nativa, contenido patrocinado, pushes de productos del propio medio.
 - scope: "provincial" si ocurre en una provincia puntual; "national" si es de alcance nacional o internacional con ángulo argentino, sin una provincia puntual.
 - province: código ISO AR-* de la provincia, o "none" si scope es national. Noticias de Malvinas → "AR-V".
 - category: una de ${CATEGORIES.join(", ")}.

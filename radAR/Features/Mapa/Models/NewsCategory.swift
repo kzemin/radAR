@@ -5,6 +5,7 @@ enum NewsCategory: String, Codable, CaseIterable, Hashable, Identifiable {
     case economia
     case seguridad
     case social
+    case deportes
     case otro
 
     var id: String { rawValue }
@@ -15,6 +16,7 @@ enum NewsCategory: String, Codable, CaseIterable, Hashable, Identifiable {
         case .economia: "Economía"
         case .seguridad: "Seguridad"
         case .social: "Social"
+        case .deportes: "Deportes"
         case .otro: "Otro"
         }
     }
@@ -25,6 +27,7 @@ enum NewsCategory: String, Codable, CaseIterable, Hashable, Identifiable {
         case .economia: "ECO"
         case .seguridad: "SEG"
         case .social: "SOC"
+        case .deportes: "DEP"
         case .otro: "OTR"
         }
     }
@@ -36,6 +39,7 @@ enum NewsCategory: String, Codable, CaseIterable, Hashable, Identifiable {
         case .economia: "chart.line.uptrend.xyaxis"
         case .seguridad: "shield.lefthalf.filled"
         case .social: "person.3.fill"
+        case .deportes: "sportscourt.fill"
         case .otro: "newspaper.fill"
         }
     }
