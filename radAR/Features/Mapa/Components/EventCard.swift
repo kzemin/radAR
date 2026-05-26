@@ -17,6 +17,13 @@ struct EventCard: View {
 
                     Text(RadarFormatters.relativeShort(event.timestamp))
                         .foregroundStyle(MapaTheme.Colors.textTertiary)
+
+                    if let source = event.sourceLabel {
+                        Text("·")
+                            .foregroundStyle(MapaTheme.Colors.textTertiary)
+                        Text(source)
+                            .foregroundStyle(MapaTheme.Colors.textTertiary)
+                    }
                 }
                 .textStyle(.cardLocation)
                 .lineLimit(1)

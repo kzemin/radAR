@@ -6,6 +6,7 @@ struct MapaPinCallout: View {
     let onDismiss: () -> Void
 
     @State private var isBodyExpanded = false
+    @State private var showSafari = false
 
     /// Rough threshold: 8 lines × ~45 chars/line at Inter Regular 13pt fits in
     /// the body width. Below it the body already fits, no toggle needed.
@@ -31,6 +32,11 @@ struct MapaPinCallout: View {
             Rectangle().fill(MapaTheme.Colors.info).frame(height: 1)
         }
         .shadow(color: MapaTheme.Colors.backgroundDeep.opacity(0.5), radius: 12, x: 0, y: 4)
+        .sheet(isPresented: $showSafari) {
+            if let url = event.sourceURL {
+                SafariView(url: url).ignoresSafeArea()
+            }
+        }
     }
 
     private var headerSection: some View {
@@ -91,6 +97,10 @@ struct MapaPinCallout: View {
 
     private var bodySection: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if let source = event.sourceLabel, event.sourceURL != nil {
+                sourceLink(source: source)
+            }
+
             if isBodyExpanded {
                 ScrollView(.vertical, showsIndicators: true) {
                     bodyParagraph()
@@ -105,6 +115,23 @@ struct MapaPinCallout: View {
             }
         }
         .padding(MapaTheme.Metrics.cardPadding)
+    }
+
+    private func sourceLink(source: String) -> some View {
+        Button {
+            showSafari = true
+        } label: {
+            HStack(spacing: 3) {
+                Text(source)
+                    .foregroundStyle(MapaTheme.Colors.info)
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(MapaTheme.Colors.info)
+            }
+            .textStyle(.cardLocation)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func bodyParagraph(lineLimit: Int? = nil) -> some View {
