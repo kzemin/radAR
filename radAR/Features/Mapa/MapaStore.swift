@@ -61,17 +61,29 @@ final class MapaStore {
         return events.first(where: { $0.id == id })
     }
 
-    var activeProvinces: Set<ArgentineProvince> {
-        Set(events.map(\.province))
+    /// Province pins / drawer list. National events live in the ticker instead.
+    var provincialEvents: [NewsEvent] {
+        events.filter { !$0.isNational }
     }
 
-    /// Selects an event from anywhere (map pin or drawer list): flies the camera
-    /// to it and opens the floating callout with its detail.
+    /// Whole-country events, surfaced through the ticker (breaking first).
+    var nationalEvents: [NewsEvent] {
+        events.filter(\.isNational)
+    }
+
+    var activeProvinces: Set<ArgentineProvince> {
+        Set(provincialEvents.map(\.province))
+    }
+
+    /// Selects an event from anywhere (map pin, drawer list, or ticker): flies the
+    /// camera to it and opens the floating callout with its detail.
     func select(event: NewsEvent) {
         selectedEventID = event.id
         calloutEventID = event.id
-        cameraTargetProvince = event.province
-        cameraTargetCoordinate = event.coordinate
+        // National events have no point location — pull back to the country
+        // overview (nil target) instead of flying to a centroid.
+        cameraTargetProvince = event.isNational ? nil : event.province
+        cameraTargetCoordinate = event.isNational ? nil : event.coordinate
         cameraNonce &+= 1
     }
 

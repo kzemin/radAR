@@ -34,6 +34,19 @@ struct NewsEvent: Identifiable, Hashable {
         self.sourceURL = sourceURL
     }
 
+    /// National-scope event: no point location, surfaced via the ticker, and
+    /// selecting it highlights the whole country rather than a single province.
+    var isNational: Bool { province == .nacional }
+
+    /// Short brand label derived from the source URL host — e.g. `Clarin.com`,
+    /// `Infobae.com`. Returns nil when there's no usable source URL.
+    var sourceLabel: String? {
+        guard let host = sourceURL?.host() else { return nil }
+        let trimmed = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+        guard let first = trimmed.first else { return nil }
+        return first.uppercased() + trimmed.dropFirst()
+    }
+
     static func == (lhs: NewsEvent, rhs: NewsEvent) -> Bool {
         lhs.id == rhs.id
     }

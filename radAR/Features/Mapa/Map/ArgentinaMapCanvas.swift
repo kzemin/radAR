@@ -207,13 +207,17 @@ struct ArgentinaMapCanvas: View {
     }
 
     private func drawProvinces(context: inout GraphicsContext, projection: MapProjection) {
-        let selectedProvince = events.first(where: { $0.id == selectedEventID })?.province
+        let selectedEvent = events.first(where: { $0.id == selectedEventID })
+        // A national event lights the whole country; a provincial one, a single shape.
+        let nationalSelected = selectedEvent?.isNational == true
+        let selectedProvince = nationalSelected ? nil : selectedEvent?.province
         let strokeWidth: CGFloat = 0.8
         let selectedStrokeWidth: CGFloat = 1.5
         let landFill = MapaTheme.Colors.mapLand
         let activeFill = MapaTheme.Colors.mapActiveFill
 
         var selectedPath: Path?
+        var countryPath = Path()
 
         for shape in provinces {
             let path = projectedPath(for: shape, projection: projection)
@@ -223,19 +227,27 @@ struct ArgentinaMapCanvas: View {
             // base land fill so the country reads as a solid silhouette
             context.fill(path, with: .color(landFill))
 
-            if !isSelected, isActive {
+            if nationalSelected {
                 context.fill(path, with: .color(activeFill))
-            }
-
-            if isSelected {
+                context.stroke(path, with: .color(MapaTheme.Colors.mapBorder), lineWidth: strokeWidth)
+                countryPath.addPath(path)
+            } else if isSelected {
                 selectedPath = path
             } else {
+                if isActive {
+                    context.fill(path, with: .color(activeFill))
+                }
                 context.stroke(path, with: .color(MapaTheme.Colors.mapBorder), lineWidth: strokeWidth)
             }
         }
 
-        // Render the selected province last so its halo sits above neighboring strokes.
-        if let selectedPath {
+        // Render the selection halo last so it sits above neighboring strokes.
+        if nationalSelected {
+            context.drawLayer { layer in
+                layer.addFilter(.shadow(color: MapaTheme.Colors.accentGlow, radius: 6, x: 0, y: 0))
+                layer.stroke(countryPath, with: .color(MapaTheme.Colors.mapBorderSelected), lineWidth: 1.0)
+            }
+        } else if let selectedPath {
             context.drawLayer { layer in
                 layer.addFilter(.shadow(color: MapaTheme.Colors.accent.opacity(0.65), radius: 4, x: 0, y: 0))
                 layer.stroke(selectedPath, with: .color(MapaTheme.Colors.mapBorderSelected), lineWidth: selectedStrokeWidth)
@@ -306,6 +318,8 @@ struct ArgentinaMapCanvas: View {
                 return lhs.timestamp > rhs.timestamp
             }
             .compactMap { event -> (event: NewsEvent, point: CGPoint)? in
+                // National events have no point location — they're ticker-only.
+                if event.isNational { return nil }
                 let isSelected = event.id == selectedEventID
                 let age = now.timeIntervalSince(event.timestamp)
                 // Selection overrides the fade: a tapped event shows even if aged out.

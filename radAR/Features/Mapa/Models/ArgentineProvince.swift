@@ -27,6 +27,11 @@ enum ArgentineProvince: String, CaseIterable, Codable, Hashable, Identifiable {
     case tierraDelFuego = "AR-V"
     case tucuman = "AR-T"
 
+    /// Pseudo-value for national-scope events: the whole country is the subject.
+    /// Not a real province (no GeoJSON shape) — selecting it lights up all of
+    /// Argentina and pulls the camera back to the country overview.
+    case nacional = "AR"
+
     var id: String { rawValue }
 
     var code: String { rawValue }
@@ -57,6 +62,7 @@ enum ArgentineProvince: String, CaseIterable, Codable, Hashable, Identifiable {
         case .santiagoDelEstero: "Santiago del Estero"
         case .tierraDelFuego: "Tierra del Fuego"
         case .tucuman: "Tucumán"
+        case .nacional: "Argentina"
         }
     }
 
@@ -88,6 +94,7 @@ enum ArgentineProvince: String, CaseIterable, Codable, Hashable, Identifiable {
         case .santiagoDelEstero: .init(latitude: -27.8, longitude: -63.6)
         case .tierraDelFuego: .init(latitude: -54.0, longitude: -67.5)
         case .tucuman: .init(latitude: -26.9, longitude: -65.3)
+        case .nacional: .init(latitude: -38.5, longitude: -63.65) // country center
         }
     }
 }

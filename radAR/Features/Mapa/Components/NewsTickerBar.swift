@@ -4,12 +4,16 @@ enum TickerItem: Identifiable, Hashable {
     case quote(label: String, value: String, change: String?)
     case stat(label: String, value: String)
     case urgent(String)
+    /// A tappable national headline. `eventID` is the `NewsEvent.id` as a string so
+    /// the ticker stays decoupled from the model; the host resolves it back.
+    case news(eventID: String, kicker: String, text: String, breaking: Bool)
 
     var id: String {
         switch self {
         case let .quote(label, _, _): "q-\(label)"
         case let .stat(label, _): "s-\(label)"
         case let .urgent(text): "u-\(text)"
+        case let .news(eventID, _, _, _): "n-\(eventID)"
         }
     }
 }
@@ -18,6 +22,7 @@ struct NewsTickerBar: View {
     let items: [TickerItem]
     var pointsPerSecond: CGFloat = 48
     var height: CGFloat = 35
+    var onTapNews: ((String) -> Void)? = nil
 
     @State private var rowWidth: CGFloat = 0
 
@@ -127,6 +132,24 @@ struct NewsTickerBar: View {
                     .padding(.leading, 8)
             }
             .frame(height: height)
+
+        case let .news(eventID, kicker, text, breaking):
+            HStack(spacing: 0) {
+                Text((breaking ? "Urgente" : kicker).uppercased())
+                    .textStyle(.tickerUrgentLabel)
+                    .foregroundStyle(MapaTheme.Colors.textInverse)
+                    .padding(.horizontal, 8)
+                    .frame(maxHeight: .infinity)
+                    .background(breaking ? MapaTheme.Colors.accent : MapaTheme.Colors.info)
+
+                Text(text)
+                    .textStyle(.tickerUrgent)
+                    .foregroundStyle(breaking ? .white : MapaTheme.Colors.textPrimary)
+                    .padding(.leading, 8)
+            }
+            .frame(height: height)
+            .contentShape(Rectangle())
+            .onTapGesture { onTapNews?(eventID) }
         }
     }
 

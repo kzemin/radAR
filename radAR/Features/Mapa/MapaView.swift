@@ -116,7 +116,7 @@ struct MapaView: View {
 
     private var topStack: some View {
         VStack(alignment: .leading, spacing: 0) {
-            NewsTickerBar(items: MockTickerData.items)
+            NewsTickerBar(items: tickerItems, onTapNews: selectNews)
 
             VStack(alignment: .leading, spacing: RadarTheme.Spacing.compact) {
                 MapaHeader(subtitle: headerSubtitle)
@@ -143,6 +143,28 @@ struct MapaView: View {
 
     private var headerSubtitle: String {
         store.selectedEvent?.province.displayName ?? "Argentina"
+    }
+
+    /// National headlines (breaking first) lead the ticker, followed by the market
+    /// strip. Capped so the marquee loops in a reasonable cycle.
+    private var tickerItems: [TickerItem] {
+        let national = store.nationalEvents
+        let ordered = national.filter { $0.severity == .breaking }
+            + national.filter { $0.severity != .breaking }
+        let news = ordered.prefix(14).map { event in
+            TickerItem.news(
+                eventID: event.id.uuidString,
+                kicker: "Nacional",
+                text: event.headline,
+                breaking: event.severity == .breaking
+            )
+        }
+        return news + MockTickerData.items
+    }
+
+    private func selectNews(_ eventID: String) {
+        guard let event = store.events.first(where: { $0.id.uuidString == eventID }) else { return }
+        store.select(event: event)
     }
 }
 

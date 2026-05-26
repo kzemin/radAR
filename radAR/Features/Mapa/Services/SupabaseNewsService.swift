@@ -41,8 +41,9 @@ struct SupabaseNewsService: NewsService {
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        // National-scope rows have no province and are handled separately later, so
-        // `compactMap` drops anything that can't become a provincial pin for now.
+        // National rows map to the `.nacional` whole-country value; only rows that
+        // can't be placed at all (bad id/date, or a provincial row with no usable
+        // province code) are dropped.
         return try decoder.decode([NewsEventDTO].self, from: data).compactMap { $0.toNewsEvent() }
     }
 }
@@ -51,6 +52,7 @@ private struct NewsEventDTO: Decodable {
     let id: String
     let headline: String
     let body: String
+    let scope: String?
     let province: String?
     let lat: Double?
     let lon: Double?
@@ -62,9 +64,17 @@ private struct NewsEventDTO: Decodable {
     func toNewsEvent() -> NewsEvent? {
         guard
             let uuid = UUID(uuidString: id),
-            let province = province.flatMap(ArgentineProvince.init(rawValue:)),
             let timestamp = Self.parseDate(occurredAt)
         else { return nil }
+
+        let resolvedProvince: ArgentineProvince
+        if scope == "national" {
+            resolvedProvince = .nacional
+        } else if let parsed = province.flatMap(ArgentineProvince.init(rawValue:)) {
+            resolvedProvince = parsed
+        } else {
+            return nil
+        }
 
         let coordinate: CLLocationCoordinate2D? = {
             guard let lat, let lon else { return nil }
@@ -75,7 +85,7 @@ private struct NewsEventDTO: Decodable {
             id: uuid,
             headline: headline,
             body: body,
-            province: province,
+            province: resolvedProvince,
             coordinate: coordinate,
             timestamp: timestamp,
             category: NewsCategory(rawValue: category) ?? .otro,
