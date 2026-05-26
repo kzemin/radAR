@@ -60,6 +60,7 @@ private struct NewsEventDTO: Decodable {
     let category: String
     let severity: String
     let sourceUrl: String?
+    let imageUrl: String?
 
     func toNewsEvent() -> NewsEvent? {
         guard
@@ -90,7 +91,8 @@ private struct NewsEventDTO: Decodable {
             timestamp: timestamp,
             category: NewsCategory(rawValue: category) ?? .otro,
             severity: NewsSeverity(rawValue: severity) ?? .normal,
-            sourceURL: sourceUrl.flatMap(URL.init(string:))
+            sourceURL: sourceUrl.flatMap(URL.init(string:)),
+            imageURL: imageUrl.flatMap(URL.init(string:))
         )
     }
 

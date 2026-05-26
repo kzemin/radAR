@@ -11,6 +11,7 @@ struct NewsEvent: Identifiable, Hashable {
     let category: NewsCategory
     let severity: NewsSeverity
     let sourceURL: URL?
+    let imageURL: URL?
 
     init(
         id: UUID = UUID(),
@@ -21,7 +22,8 @@ struct NewsEvent: Identifiable, Hashable {
         timestamp: Date,
         category: NewsCategory,
         severity: NewsSeverity = .normal,
-        sourceURL: URL? = nil
+        sourceURL: URL? = nil,
+        imageURL: URL? = nil
     ) {
         self.id = id
         self.headline = headline
@@ -32,6 +34,7 @@ struct NewsEvent: Identifiable, Hashable {
         self.category = category
         self.severity = severity
         self.sourceURL = sourceURL
+        self.imageURL = imageURL
     }
 
     /// National-scope event: no point location, surfaced via the ticker, and
