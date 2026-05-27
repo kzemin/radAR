@@ -30,6 +30,14 @@ struct MapaView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .task { await store.load() }
+        .task {
+            // Live market strip: prime on appear and refresh every 5 minutes while
+            // the view is on screen. Cancelled automatically on disappear.
+            while !Task.isCancelled {
+                await store.loadMarket()
+                try? await Task.sleep(for: .seconds(300))
+            }
+        }
         .overlay { statusOverlay }
     }
 
@@ -145,8 +153,8 @@ struct MapaView: View {
         store.selectedEvent?.province.displayName ?? "Argentina"
     }
 
-    /// National headlines (breaking first) lead the ticker, followed by the market
-    /// strip. Capped so the marquee loops in a reasonable cycle.
+    /// National headlines (breaking first) lead the ticker, followed by the live
+    /// market strip. Capped so the marquee loops in a reasonable cycle.
     private var tickerItems: [TickerItem] {
         let national = store.nationalEvents
         let ordered = national.filter { $0.severity == .breaking }
@@ -159,7 +167,15 @@ struct MapaView: View {
                 breaking: event.severity == .breaking
             )
         }
-        return news + MockTickerData.items
+        let market = store.quotes.map { quote -> TickerItem in
+            switch quote.kind {
+            case .riesgoPais:
+                .stat(label: quote.label, value: quote.value)
+            default:
+                .quote(label: quote.label, value: quote.value, change: nil)
+            }
+        }
+        return news + market
     }
 
     private func selectNews(_ eventID: String) {

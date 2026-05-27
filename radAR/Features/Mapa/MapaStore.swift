@@ -12,6 +12,7 @@ final class MapaStore {
     }
 
     private(set) var events: [NewsEvent] = []
+    private(set) var quotes: [MarketQuote] = []
     private(set) var loadState: LoadState = .loading
     private(set) var provinces: [ProvinceShape]
     private(set) var argentinaExtras: [BackdropShape]
@@ -25,14 +26,17 @@ final class MapaStore {
     var isDrawerExpanded: Bool = false
 
     private let newsService: NewsService
+    private let marketService: MarketService
 
     init(
         newsService: NewsService = MockNewsService(),
+        marketService: MarketService = DolarApiMarketService(),
         provinces: [ProvinceShape] = ProvinceGeometryLoader.load(),
         argentinaExtras: [BackdropShape] = ExtrasGeometryLoader.load(),
         worldCountries: [BackdropShape] = WorldGeometryLoader.load()
     ) {
         self.newsService = newsService
+        self.marketService = marketService
         self.provinces = provinces
         self.argentinaExtras = argentinaExtras
         self.worldCountries = worldCountries
@@ -49,6 +53,14 @@ final class MapaStore {
         } catch {
             loadState = .failed("No se pudieron cargar las noticias.")
         }
+    }
+
+    /// Best-effort refresh of the market strip. Failures leave the previous values
+    /// in place so the ticker doesn't blink to empty on a transient network blip.
+    func loadMarket() async {
+        let fetched = await marketService.fetchQuotes()
+        guard !fetched.isEmpty else { return }
+        quotes = fetched
     }
 
     var selectedEvent: NewsEvent? {
