@@ -5,36 +5,35 @@ import SwiftUI
 /// muted card when there's no URL or the load fails. A leading-edge gradient
 /// fades the picture into the card background so it eases into the text area
 /// instead of butting against it.
+///
+/// Uses a `Color.clear` shim sized to the parent's height so the AsyncImage
+/// (which `.scaledToFill`s) is clipped to the card's bounds — without this,
+/// portrait-aspect images push past the card vertically.
 struct EventThumbnail: View {
     let event: NewsEvent
     var width: CGFloat = 110
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            image
-            fade
-        }
-        .frame(width: width)
-        .clipped()
+        Color.clear
+            .frame(width: width)
+            .overlay { content }
+            .overlay { fade }
+            .clipped()
     }
 
     @ViewBuilder
-    private var image: some View {
+    private var content: some View {
         if let url = event.imageURL {
             AsyncImage(url: url, transaction: Transaction(animation: .easeOut(duration: 0.18))) { phase in
                 switch phase {
                 case .success(let img):
-                    img.resizable()
-                        .scaledToFill()
-                        .frame(width: width)
-                        .clipped()
+                    img.resizable().scaledToFill()
                 case .empty, .failure:
                     symbolPlaceholder
                 @unknown default:
                     symbolPlaceholder
                 }
             }
-            .frame(width: width)
         } else {
             symbolPlaceholder
         }
@@ -47,7 +46,6 @@ struct EventThumbnail: View {
                 .font(.system(size: width * 0.32, weight: .regular))
                 .foregroundStyle(MapaTheme.Colors.textTertiary)
         }
-        .frame(width: width)
     }
 
     private var fade: some View {

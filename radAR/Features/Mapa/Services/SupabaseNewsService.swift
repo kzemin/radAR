@@ -59,6 +59,7 @@ private struct NewsEventDTO: Decodable {
     let occurredAt: String
     let category: String
     let severity: String
+    let source: String?
     let sourceUrl: String?
     let imageUrl: String?
 
@@ -91,6 +92,7 @@ private struct NewsEventDTO: Decodable {
             timestamp: timestamp,
             category: NewsCategory(rawValue: category) ?? .otro,
             severity: NewsSeverity(rawValue: severity) ?? .normal,
+            sourceID: source,
             sourceURL: sourceUrl.flatMap(URL.init(string:)),
             imageURL: imageUrl.flatMap(URL.init(string:))
         )

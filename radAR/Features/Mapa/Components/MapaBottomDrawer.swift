@@ -76,10 +76,10 @@ struct MapaBottomDrawer: View {
         .animation(RadarTheme.Animation.panel, value: store.isDrawerExpanded)
     }
 
-    /// Full chronological list of provincial events — the drawer is a stable browse
-    /// list regardless of peek/expanded state. National events live in the ticker.
+    /// Full chronological list of every event — national news also surfaces in the
+    /// ticker, but the drawer is the canonical "all news" browse list.
     private var visibleEvents: [NewsEvent] {
-        store.provincialEvents
+        store.events
     }
 
     private var handle: some View {

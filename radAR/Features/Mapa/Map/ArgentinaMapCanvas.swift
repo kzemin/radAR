@@ -9,6 +9,7 @@ struct ArgentinaMapCanvas: View {
     let activeProvinces: Set<ArgentineProvince>
     let selectedEventID: NewsEvent.ID?
     let cameraTargetCoordinate: CLLocationCoordinate2D?
+    let cameraTargetZoom: Double?
     let cameraNonce: Int
     let onSelectEvent: (NewsEvent) -> Void
     let onTapEmpty: () -> Void
@@ -282,19 +283,17 @@ struct ArgentinaMapCanvas: View {
             let stroke: Color
             let strokeWidth: CGFloat
 
-            // Pins stay solid white — age never touches alpha, which would muddy the
-            // square against the dark map. The only time signal is a breaking pin
-            // cooling from orange to white as it ages.
+            // Recency heat: the freshest pins glow orange and cool to white as they
+            // age, so the map reads "what's hot right now". Age never touches alpha
+            // (that would muddy the square against the dark map) — only hue. Breaking
+            // events use a slower cool-down so urgent news stays hot longer.
             if isSelected {
                 fill = MapaTheme.Colors.accent
                 stroke = MapaTheme.Colors.textPrimary
                 strokeWidth = 1.5
-            } else if isBreaking {
-                fill = blend(MapaTheme.Colors.pinNormal, MapaTheme.Colors.accent, PinDecay.freshness(age: age))
-                stroke = MapaTheme.Colors.background
-                strokeWidth = 1
             } else {
-                fill = MapaTheme.Colors.pinNormal
+                let tau = isBreaking ? PinDecay.breakingTau : PinDecay.normalTau
+                fill = blend(MapaTheme.Colors.pinNormal, MapaTheme.Colors.accent, PinDecay.freshness(age: age, tau: tau))
                 stroke = MapaTheme.Colors.background
                 strokeWidth = 1
             }
@@ -319,11 +318,9 @@ struct ArgentinaMapCanvas: View {
             }
             .compactMap { event -> (event: NewsEvent, point: CGPoint)? in
                 // National events have no point location — they're ticker-only.
+                // Everything else gets a pin; the server's `expires_at` filter is
+                // the single source of truth for what's still live.
                 if event.isNational { return nil }
-                let isSelected = event.id == selectedEventID
-                let age = now.timeIntervalSince(event.timestamp)
-                // Selection overrides the fade: a tapped event shows even if aged out.
-                if !isSelected, !PinDecay.isLive(age: age) { return nil }
                 return (event: event, point: projection.point(for: event.coordinate))
             }
     }
@@ -418,6 +415,16 @@ struct ArgentinaMapCanvas: View {
                 centerLat: coord.latitude,
                 centerLon: coord.longitude,
                 zoom: max(camera.zoom, 2.6)
+            )
+            next.clampToReference()
+            target = next
+        } else if let zoom = cameraTargetZoom {
+            // Country-wide overview for national events — same center as `.default`,
+            // but pulled back so all of Argentina has clear breathing room.
+            var next = MapCamera(
+                centerLat: MapCamera.referenceBounds.centerLat,
+                centerLon: MapCamera.referenceBounds.centerLon,
+                zoom: zoom
             )
             next.clampToReference()
             target = next

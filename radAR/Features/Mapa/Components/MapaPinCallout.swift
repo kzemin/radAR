@@ -57,7 +57,7 @@ struct MapaPinCallout: View {
             Text(event.headline)
                 .textStyle(.cardTitleLarge)
                 .foregroundStyle(MapaTheme.Colors.textPrimary)
-                .lineLimit(3)
+                .lineLimit(6)
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -121,7 +121,11 @@ struct MapaPinCallout: View {
         Button {
             showSafari = true
         } label: {
-            HStack(spacing: 3) {
+            HStack(spacing: 5) {
+                // Leading icon — same lookup as the drawer card. The callout
+                // keeps the URL form ("Clarin.com") as the link text since
+                // it doubles as an "external destination" hint.
+                SourceIcon(sourceID: event.sourceID)
                 Text(source)
                     .foregroundStyle(MapaTheme.Colors.info)
                 Image(systemName: "arrow.up.right")

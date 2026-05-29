@@ -70,7 +70,9 @@ struct NewsTickerBar: View {
     }
 
     private var row: some View {
-        HStack(spacing: 6) {
+        // Wider spacing around each vertical rule so the grid lines breathe
+        // between items instead of feeling crammed against the text.
+        HStack(spacing: 12) {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 itemView(item)
                 separator
@@ -81,28 +83,38 @@ struct NewsTickerBar: View {
     }
 
     private var separator: some View {
-        Text("·")
-            .font(RadarTheme.Typography.compactLabel)
-            .foregroundStyle(MapaTheme.Colors.borderStrong)
+        // Full-height 1pt rule between items — same width and color as the
+        // ticker's top/bottom borders, so the strip reads as a clean grid
+        // instead of a bullet-separated list.
+        Rectangle()
+            .fill(MapaTheme.Colors.border)
+            .frame(width: 1, height: height)
     }
 
     @ViewBuilder
     private func itemView(_ item: TickerItem) -> some View {
         switch item {
         case let .quote(label, value, change):
+            // Value tints to the change color so the whole quote reads as up/down.
+            let valueColor = change.map(changeColor(for:)) ?? MapaTheme.Colors.textPrimary
             HStack(spacing: 6) {
                 Text(label)
                     .textStyle(.tickerLabel)
                     .foregroundStyle(MapaTheme.Colors.textTertiary)
 
-                Text(value)
+                Text(coloredValue(value, numberColor: valueColor))
                     .textStyle(.tickerValue)
-                    .foregroundStyle(MapaTheme.Colors.textPrimary)
 
                 if let change {
+                    // Solid sharp-cornered badge to match the rest of the app's
+                    // Rectangle-based chrome (drawer, callout borders, dividers).
+                    // Smaller font + tight padding so it sits within the value's height.
                     Text(change)
-                        .textStyle(.tickerValue)
-                        .foregroundStyle(changeColor(for: change))
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(changeColor(for: change))
                 }
             }
 
@@ -155,6 +167,22 @@ struct NewsTickerBar: View {
 
     private func changeColor(for change: String) -> Color {
         change.hasPrefix("-") ? MapaTheme.Colors.negative : MapaTheme.Colors.positive
+    }
+
+    /// Tints the numeric parts of a quote with `numberColor` while keeping the
+    /// "C:" / "V:" labels and the "|" separator white — neutral chrome around
+    /// the colored figures (e.g. `C: $1.380,00 | V: $1.430,00`).
+    private func coloredValue(_ value: String, numberColor: Color) -> AttributedString {
+        var result = AttributedString()
+        let tokens = value.split(separator: " ", omittingEmptySubsequences: false)
+        for (index, token) in tokens.enumerated() {
+            var piece = AttributedString(String(token))
+            let isLabel = token == "C:" || token == "V:" || token == "|"
+            piece.foregroundColor = isLabel ? MapaTheme.Colors.textPrimary : numberColor
+            result.append(piece)
+            if index < tokens.count - 1 { result.append(AttributedString(" ")) }
+        }
+        return result
     }
 }
 

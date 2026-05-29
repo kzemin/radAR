@@ -9,7 +9,9 @@ struct MapCamera: Equatable {
     var centerLon: Double
     var zoom: Double
 
-    static let minZoom: Double = 0.95
+    // Headroom below 1.0 so a national selection can pull the camera back into
+    // a "looking at the whole country" overview, not just frame it edge-to-edge.
+    static let minZoom: Double = 0.7
     static let maxZoom: Double = 8.0
 
     /// Reference extent (Argentina mainland + Tierra del Fuego) used as zoom = 1 baseline.

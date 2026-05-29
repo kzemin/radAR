@@ -18,11 +18,19 @@ struct EventCard: View {
                     Text(RadarFormatters.relativeShort(event.timestamp))
                         .foregroundStyle(MapaTheme.Colors.textTertiary)
 
-                    if let source = event.sourceLabel {
-                        Text("·")
+                    if let sourceName = event.sourceName {
+                        // Pipe (not the dot) separates the time and the source —
+                        // gives the source chunk a stronger visual break from
+                        // the location/time metadata before it.
+                        Text("|")
                             .foregroundStyle(MapaTheme.Colors.textTertiary)
-                        Text(source)
-                            .foregroundStyle(MapaTheme.Colors.textTertiary)
+                        // Icon + brand name. The drawer uses the punchy name
+                        // ("Clarín") instead of the URL host form.
+                        HStack(spacing: 4) {
+                            SourceIcon(sourceID: event.sourceID)
+                            Text(sourceName)
+                                .foregroundStyle(MapaTheme.Colors.textTertiary)
+                        }
                     }
                 }
                 .textStyle(.cardLocation)
@@ -60,8 +68,20 @@ struct EventCard: View {
                     .stroke(MapaTheme.Colors.border, lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScaleButtonStyle())
         .contentShape(Rectangle())
+    }
+}
+
+/// Slight compression on press, snap back on release — same idea as Fallacy's
+/// `ScaleButtonStyle` but softer for a wider list cell (0.97 instead of 0.95).
+/// No opacity dimming, so the image's leading-edge fade gradient keeps its
+/// contrast through the press.
+private struct PressScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

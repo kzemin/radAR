@@ -80,6 +80,10 @@ extension RadarTheme.TextStyle {
 // MARK: - Headers + chrome
 
 extension RadarTheme.TextStyle {
+    /// "radAR" splash screen
+    static let appSplash = RadarTheme.TextStyle(
+        font: RadarTheme.Typography.monoSemibold(52, relativeTo: .title)
+    )
     /// "radAR" brand mark in the floating header.
     static let appTitle = RadarTheme.TextStyle(
         font: RadarTheme.Typography.monoSemibold(22, relativeTo: .title2)

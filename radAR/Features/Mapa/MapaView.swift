@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MapaView: View {
     @State private var store: MapaStore
+    private let pushInbox = PushInbox.shared
 
     init(store: MapaStore) {
         _store = State(initialValue: store)
@@ -29,7 +30,21 @@ struct MapaView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .task { await store.load() }
+        .task {
+            // Cold launch from a notification tap: hand the pending event to the
+            // store before loading so it resolves the moment the feed arrives.
+            if let id = pushInbox.pendingEventID {
+                store.openFromPush(eventID: id)
+                pushInbox.pendingEventID = nil
+            }
+            await store.load()
+        }
+        .onChange(of: pushInbox.pendingEventID) { _, id in
+            // Warm tap while the app is already running and loaded.
+            guard let id else { return }
+            store.openFromPush(eventID: id)
+            pushInbox.pendingEventID = nil
+        }
         .task {
             // Live market strip: prime on appear and refresh every 5 minutes while
             // the view is on screen. Cancelled automatically on disappear.
@@ -46,7 +61,7 @@ struct MapaView: View {
         if store.loadState == .loading, store.events.isEmpty {
             statusPill {
                 ProgressView().tint(MapaTheme.Colors.textSecondary)
-                Text("Cargando noticias…")
+                Text("Actualizando mapa…")
                     .textStyle(.drawerSubtitle)
                     .foregroundStyle(MapaTheme.Colors.textSecondary)
             }
@@ -56,7 +71,7 @@ struct MapaView: View {
                     .textStyle(.drawerSubtitle)
                     .foregroundStyle(MapaTheme.Colors.textPrimary)
                 Button { Task { await store.load() } } label: {
-                    Text("Reintentar")
+                    Text("Algo salió mal.")
                         .textStyle(.cardTag)
                         .foregroundStyle(MapaTheme.Colors.info)
                 }
@@ -85,6 +100,7 @@ struct MapaView: View {
             activeProvinces: store.activeProvinces,
             selectedEventID: store.selectedEventID,
             cameraTargetCoordinate: store.cameraTargetCoordinate,
+            cameraTargetZoom: store.cameraTargetZoom,
             cameraNonce: store.cameraNonce,
             onSelectEvent: { event in
                 store.select(event: event)
@@ -153,29 +169,27 @@ struct MapaView: View {
         store.selectedEvent?.province.displayName ?? "Argentina"
     }
 
-    /// National headlines (breaking first) lead the ticker, followed by the live
-    /// market strip. Capped so the marquee loops in a reasonable cycle.
+    /// The ticker carries the market strip plus any breaking-only headlines.
+    /// Regular national news lives in the drawer, not the marquee.
     private var tickerItems: [TickerItem] {
-        let national = store.nationalEvents
-        let ordered = national.filter { $0.severity == .breaking }
-            + national.filter { $0.severity != .breaking }
-        let news = ordered.prefix(14).map { event in
+        let breaking = store.events.filter { $0.severity == .breaking }
+        let urgent = breaking.prefix(6).map { event in
             TickerItem.news(
                 eventID: event.id.uuidString,
-                kicker: "Nacional",
+                kicker: "Urgente",
                 text: event.headline,
-                breaking: event.severity == .breaking
+                breaking: true
             )
         }
         let market = store.quotes.map { quote -> TickerItem in
             switch quote.kind {
-            case .riesgoPais:
+            case .riesgoPais, .inflacion, .bcraReservas:
                 .stat(label: quote.label, value: quote.value)
             default:
-                .quote(label: quote.label, value: quote.value, change: nil)
+                .quote(label: quote.label, value: quote.value, change: quote.change)
             }
         }
-        return news + market
+        return urgent + market
     }
 
     private func selectNews(_ eventID: String) {
