@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>radAR — Política de privacidad</title>
+  <style>
+    :root {
+      --bg: #0a0d12; --surface: #151b23; --border: #2b323a;
+      --text: #f2f3f6; --muted: #a4abb4; --info: #4da2ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.65; padding: 0 20px;
+    }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 64px 0 96px; }
+    h1 { font-size: 32px; letter-spacing: -0.5px; margin: 0 0 4px; }
+    h1 .ar { color: var(--info); }
+    .tag { color: var(--muted); margin: 0 0 36px; font-size: 15px; }
+    h2 { font-size: 18px; margin: 32px 0 8px; }
+    p, li { font-size: 16px; }
+    .muted { color: var(--muted); }
+    a { color: var(--info); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border);
+      color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>rad<span class="ar">AR</span> — Política de privacidad</h1>
+    <p class="tag">Última actualización: mayo 2026</p>
+
+    <p>radAR es una app de noticias sin cuentas de usuario. Recopilamos la mínima
+       información necesaria para que funcione, descrita abajo.</p>
+
+    <h2>Qué recopilamos</h2>
+    <ul>
+      <li><strong>Token de notificaciones (APNs):</strong> solo si activás las notificaciones,
+          guardamos el token de tu dispositivo para poder enviarte avisos de noticias urgentes.
+          No está asociado a tu nombre, email ni a ninguna identidad.</li>
+    </ul>
+    <p class="muted">No pedimos registro. No recopilamos nombre, email, ubicación,
+       contactos ni datos de pago. No hay analítica de terceros ni rastreo publicitario.</p>
+
+    <h2>Qué NO hacemos</h2>
+    <ul>
+      <li>No rastreamos tu actividad entre apps o sitios web.</li>
+      <li>No vendemos ni compartimos datos con anunciantes.</li>
+      <li>No usamos publicidad de terceros.</li>
+    </ul>
+
+    <h2>Dónde se guardan los datos</h2>
+    <p>El token de notificaciones se almacena en nuestra infraestructura de backend
+       (Supabase). Las noticias provienen de fuentes públicas de medios argentinos y
+       cada una enlaza a su portal de origen.</p>
+
+    <h2>Tus opciones</h2>
+    <ul>
+      <li><strong>Desactivar notificaciones:</strong> Ajustes → radAR → Notificaciones.
+          Al hacerlo, dejamos de usar tu token.</li>
+      <li><strong>Eliminar tus datos:</strong> escribinos y borramos tu token a pedido.
+          Los tokens inválidos se eliminan automáticamente.</li>
+    </ul>
+
+    <h2>Menores</h2>
+    <p>radAR no está dirigida a menores de 13 años y no recopila a sabiendas información de ellos.</p>
+
+    <h2>Contacto</h2>
+    <p>Por cualquier consulta sobre privacidad: <a href="mailto:facupaezk@gmail.com?subject=Privacidad%20radAR">facupaezk@gmail.com</a></p>
+
+    <footer>
+      <p>radAR · <a href="index.html">Soporte</a></p>
+      <p>© 2026 radAR.</p>
+    </footer>
+  </div>
+</body>
+</html>

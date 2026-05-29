@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>radAR — Soporte</title>
+  <style>
+    :root {
+      --bg: #0a0d12; --surface: #151b23; --border: #2b323a;
+      --text: #f2f3f6; --muted: #a4abb4; --accent: #f85e22; --info: #4da2ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6; padding: 0 20px;
+    }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 64px 0 96px; }
+    h1 { font-size: 40px; letter-spacing: -0.5px; margin: 0 0 4px; }
+    h1 .ar { color: var(--info); }
+    .tag { color: var(--muted); margin: 0 0 40px; font-size: 15px; }
+    h2 { font-size: 18px; margin: 40px 0 12px; }
+    p, li { color: var(--text); font-size: 16px; }
+    .muted { color: var(--muted); }
+    a { color: var(--info); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 20px 22px; margin: 16px 0;
+    }
+    .faq dt { font-weight: 600; margin-top: 18px; }
+    .faq dd { margin: 4px 0 0; color: var(--muted); }
+    footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border);
+      color: var(--muted); font-size: 13px; }
+    .pill { display: inline-block; background: var(--accent); color: #08090c;
+      font-weight: 700; font-size: 12px; padding: 2px 8px; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>rad<span class="ar">AR</span></h1>
+    <p class="tag">Mapa de noticias en tiempo real de Argentina · Soporte</p>
+
+    <div class="card">
+      <h2 style="margin-top:0">Contacto</h2>
+      <p>¿Tenés una pregunta, encontraste un error o querés sugerir algo? Escribinos:</p>
+      <p><a href="mailto:facupaezk@gmail.com?subject=Soporte%20radAR">facupaezk@gmail.com</a></p>
+      <p class="muted">Respondemos dentro de las 48&nbsp;horas hábiles.</p>
+    </div>
+
+    <h2>Preguntas frecuentes</h2>
+    <dl class="faq">
+      <dt>¿Qué es radAR?</dt>
+      <dd>Un mapa interactivo de Argentina que muestra noticias geolocalizadas por provincia en tiempo real, junto con un ticker de cotizaciones (dólar, riesgo país, inflación, Merval, S&amp;P 500, BTC).</dd>
+
+      <dt>¿Necesito una cuenta?</dt>
+      <dd>No. radAR no requiere registro ni login. Abrís la app y ya.</dd>
+
+      <dt>¿Cómo activo las notificaciones de última hora?</dt>
+      <dd>Al abrir la app por primera vez te pedimos permiso. Si lo aceptás, recibís un aviso cuando se publica una noticia urgente. Podés desactivarlas cuando quieras desde Ajustes&nbsp;→&nbsp;radAR&nbsp;→&nbsp;Notificaciones.</dd>
+
+      <dt>¿De dónde salen las noticias?</dt>
+      <dd>De fuentes públicas de medios argentinos (Clarín, La Nación, Infobae, Página/12, Ámbito, TN, La Voz, Los Andes, Río Negro, Olé). Cada nota enlaza a su portal de origen.</dd>
+
+      <dt>¿Cada cuánto se actualiza?</dt>
+      <dd>El mapa se refresca automáticamente cada pocos minutos mientras la app está abierta.</dd>
+
+      <dt>¿La app funciona sin conexión?</dt>
+      <dd>Sí, parcialmente: muestra las últimas noticias y cotizaciones guardadas hasta que recupera conexión.</dd>
+    </dl>
+
+    <footer>
+      <p>radAR · <a href="privacy.html">Política de privacidad</a></p>
+      <p>© 2026 radAR. Última actualización: mayo 2026.</p>
+    </footer>
+  </div>
+</body>
+</html>
