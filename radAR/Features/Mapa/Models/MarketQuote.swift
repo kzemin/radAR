@@ -6,6 +6,16 @@ import Foundation
 struct MarketQuote: Identifiable, Hashable {
     let kind: Kind
     let value: String
+    /// Daily-ish movement, pre-formatted as "+X,YY%" or "-X,YY%". Nil when no
+    /// source data is available yet (fresh install, first refresh, or a stat
+    /// item that doesn't carry a change column).
+    let change: String?
+
+    init(kind: Kind, value: String, change: String? = nil) {
+        self.kind = kind
+        self.value = value
+        self.change = change
+    }
 
     var id: Kind { kind }
     var label: String { kind.label }
@@ -13,19 +23,31 @@ struct MarketQuote: Identifiable, Hashable {
     enum Kind: String, CaseIterable, Hashable {
         case dolarOficial
         case dolarBlue
-        case dolarMep
         case dolarCcl
-        case dolarMayorista
+        case dolarUsdt
+        case merval
+        case spx
+        case btc
         case riesgoPais
+        case inflacion
+        case bcraReservas
+        case soja
+        case petroleo
 
         var label: String {
             switch self {
             case .dolarOficial: "Dólar oficial"
             case .dolarBlue: "Dólar blue"
-            case .dolarMep: "MEP"
             case .dolarCcl: "CCL"
-            case .dolarMayorista: "Mayorista"
+            case .dolarUsdt: "USDT"
+            case .merval: "Merval"
+            case .spx: "S&P 500"
+            case .btc: "BTC"
             case .riesgoPais: "Riesgo país"
+            case .inflacion: "Inflación"
+            case .bcraReservas: "BCRA reservas"
+            case .soja: "Soja"
+            case .petroleo: "Petróleo"
             }
         }
     }
