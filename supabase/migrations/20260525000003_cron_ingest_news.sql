@@ -21,6 +21,13 @@ begin
 exception when others then null;
 end $$;
 
+-- Authorization Bearer (not a custom x-cron-secret header) — pg_net is unreliable
+-- about forwarding non-standard header names; standard auth headers pass through cleanly.
+-- The secret is hardcoded here because newer Supabase projects deny
+-- `alter database postgres set app.cron_secret` from the SQL editor; the cron
+-- command lives in `cron.job.command` which is only readable by the postgres
+-- role so it's not really exposed. Rotating the secret = re-run this migration
+-- with the new value (and update the function's CRON_SECRET env to match).
 select cron.schedule(
     'ingest-news-every-10-min',
     '*/10 * * * *',
@@ -29,7 +36,7 @@ select cron.schedule(
         url := 'https://oqgffwkehcmedwvgceku.supabase.co/functions/v1/ingest-news',
         headers := jsonb_build_object(
             'Content-Type', 'application/json',
-            'x-cron-secret', coalesce(current_setting('app.cron_secret', true), '')
+            'Authorization', 'Bearer REPLACE_WITH_CRON_SECRET'
         ),
         body := '{}'::jsonb,
         timeout_milliseconds := 30000

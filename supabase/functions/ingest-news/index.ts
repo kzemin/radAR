@@ -4,9 +4,10 @@
 // gpt-4o-mini (scope / province / category / severity), and upserts into
 // `news_events`. Meant to run on a cron (~10 min).
 //
-// v1 scope: RSS only; flat 24h expires_at. Follow-ons (NETWORKING_ROADMAP.md):
-// GDELT source, the day-aware expires_at window via `holidays`, story threading,
-// and a rules-first tagger to cut LLM cost.
+// Day-aware expires_at: a story stays live until the end of the next business
+// day in ART (skipping weekends + the seeded `holidays` table), so Friday and
+// pre-holiday news survive the gap instead of dropping off into an empty map.
+// Follow-ons (NETWORKING_ROADMAP.md): GDELT, story threading, rules-first tagger.
 //
 // NOTE: not yet deploy-tested — expect to iterate on real feed/LLM output.
 
@@ -22,14 +23,23 @@ const OPENAI_API_KEY = (Deno.env.get("OPENAI_API_KEY") ?? "").trim();
 // x-cron-secret header. Inert until you set the CRON_SECRET env var.
 const CRON_SECRET = (Deno.env.get("CRON_SECRET") ?? "").trim();
 
+// APNs (breaking-news push). All optional — if any is unset, pushes are skipped
+// silently and the rest of ingestion is unaffected.
+const APNS_KEY = (Deno.env.get("APNS_KEY") ?? "").trim();          // .p8 PEM contents
+const APNS_KEY_ID = (Deno.env.get("APNS_KEY_ID") ?? "").trim();    // 10-char key id
+const APNS_TEAM_ID = (Deno.env.get("APNS_TEAM_ID") ?? "").trim();  // 10-char team id
+const APNS_TOPIC = (Deno.env.get("APNS_TOPIC") ?? "").trim();      // bundle id, e.g. kzemin.radAR
+// Production by default; set to api.sandbox.push.apple.com for Xcode dev builds.
+const APNS_HOST = (Deno.env.get("APNS_HOST") ?? "api.push.apple.com").trim();
+
 const PROVINCE_CODES = [
   "AR-A", "AR-B", "AR-C", "AR-D", "AR-E", "AR-F", "AR-G", "AR-H", "AR-J", "AR-K",
   "AR-L", "AR-M", "AR-N", "AR-P", "AR-Q", "AR-R", "AR-S", "AR-T", "AR-U", "AR-V",
   "AR-W", "AR-X", "AR-Y", "AR-Z",
 ];
 const CATEGORIES = ["politica", "economia", "seguridad", "social", "deportes", "otro"];
-const LIVE_WINDOW_HOURS = 24; // flat for v1; day-aware window is a follow-on
 const MAX_PER_RUN = 30; // cap OpenAI calls per invocation; backlog drains over runs
+const AR_OFFSET_HOURS = -3; // Argentina is UTC-3, no DST since 2009
 
 const xml = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_" });
 
@@ -38,6 +48,7 @@ interface FeedItem {
   body: string;
   link: string;
   occurredAt: string;
+  expiresAt: string;
   imageUrl: string | null;
   sourceId: string;
   tier: number;
@@ -51,17 +62,28 @@ interface Tag {
 }
 
 Deno.serve(async (req) => {
-  if (CRON_SECRET && req.headers.get("x-cron-secret") !== CRON_SECRET) {
-    return json({ error: "unauthorized" }, 401);
+  // Accept either an explicit `x-cron-secret` header (manual curl) or the secret
+  // sent as `Authorization: Bearer <secret>` (pg_cron + pg_net path, since pg_net
+  // is unreliable about forwarding custom headers but always preserves Authorization).
+  if (CRON_SECRET) {
+    const fromCustom = req.headers.get("x-cron-secret");
+    const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+    if (fromCustom !== CRON_SECRET && bearer !== CRON_SECRET) {
+      return json({ error: "unauthorized" }, 401);
+    }
   }
   if (!OPENAI_API_KEY) return json({ error: "OPENAI_API_KEY not set" }, 500);
   if (!SERVICE_KEY) return json({ error: "service key not set — add the RADAR_SERVICE_KEY secret" }, 500);
   const db = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  const { data: sources, error: srcErr } = await db
-    .from("sources").select("id, url, tier").eq("kind", "rss");
+  const [{ data: sources, error: srcErr }, { data: holidayRows }] = await Promise.all([
+    db.from("sources").select("id, url, tier").eq("kind", "rss"),
+    db.from("holidays").select("day"),
+  ]);
   if (srcErr) return json({ error: srcErr.message, serviceKeyLen: SERVICE_KEY.length }, 500);
   if (!sources?.length) return json({ message: "no rss sources configured" }, 200);
+  // Holidays failing isn't fatal — `dayAwareExpiry` still handles weekends.
+  const holidaySet = new Set<string>((holidayRows ?? []).map((h: { day: string }) => h.day));
 
   // Fetch + parse every feed; a bad feed is skipped, not fatal.
   const items: FeedItem[] = [];
@@ -73,11 +95,13 @@ Deno.serve(async (req) => {
         const link = str(it.link);
         const title = clean(str(it.title));
         if (!link || !title) continue;
+        const occurredAt = toISO(str(it.pubDate ?? it.published ?? it.updated)) ?? new Date().toISOString();
         items.push({
           title,
           body: clean(str(it.description ?? it["content:encoded"] ?? "")),
           link,
-          occurredAt: toISO(str(it.pubDate ?? it.published ?? it.updated)) ?? new Date().toISOString(),
+          occurredAt,
+          expiresAt: dayAwareExpiry(occurredAt, holidaySet),
           imageUrl: imageFrom(it),
           sourceId: s.id,
           tier: s.tier,
@@ -93,12 +117,12 @@ Deno.serve(async (req) => {
     const { data } = await db.from("news_events").select("dedup_key").in("dedup_key", batch);
     for (const r of data ?? []) known.add(r.dedup_key);
   }
-  // Skip items already past the live window — no point spending an OpenAI call to
-  // tag a story that would be expired the moment it's stored. Cap per run so the
-  // first (all-fresh) invocation completes and upserts instead of timing out.
-  const cutoff = Date.now() - LIVE_WINDOW_HOURS * 3_600_000;
+  // Skip items already past their day-aware expiry — no point spending an OpenAI
+  // call to tag a story that would be expired the moment it's stored. Cap per run
+  // so the first (all-fresh) invocation completes and upserts instead of timing out.
+  const nowMs = Date.now();
   const allFresh = dedupeByLink(items)
-    .filter((i) => !known.has(i.link) && Date.parse(i.occurredAt) >= cutoff);
+    .filter((i) => !known.has(i.link) && Date.parse(i.expiresAt) > nowMs);
   const fresh = allFresh.slice(0, MAX_PER_RUN);
 
   // Tag + build rows.
@@ -125,7 +149,7 @@ Deno.serve(async (req) => {
       scope: tag.scope,
       province,
       occurred_at: item.occurredAt,
-      expires_at: new Date(Date.parse(item.occurredAt) + LIVE_WINDOW_HOURS * 3_600_000).toISOString(),
+      expires_at: item.expiresAt,
       category: CATEGORIES.includes(tag.category) ? tag.category : "otro",
       severity: tag.severity === "breaking" ? "breaking" : "normal",
       source: item.sourceId,
@@ -137,15 +161,87 @@ Deno.serve(async (req) => {
   }
 
   let inserted = 0;
+  let pushed = 0;
   if (rows.length) {
-    const { error, count } = await db
+    // `.select()` after an ignore-duplicates upsert returns only the rows that
+    // were actually inserted — exactly what we want to push for.
+    const { data: insertedRows, error } = await db
       .from("news_events")
-      .upsert(rows, { onConflict: "dedup_key", ignoreDuplicates: true, count: "exact" });
+      .upsert(rows, { onConflict: "dedup_key", ignoreDuplicates: true })
+      .select("id, headline, severity");
     if (error) return json({ error: error.message }, 500);
-    inserted = count ?? rows.length;
+    inserted = insertedRows?.length ?? 0;
+    const breaking = (insertedRows ?? []).filter((r: { severity: string }) => r.severity === "breaking");
+    if (breaking.length) pushed = await pushBreaking(db, breaking);
   }
-  return json({ feeds: sources.length, candidates: items.length, backlog: allFresh.length, processed: fresh.length, dropped, inserted, tagFailures, firstTagError }, 200);
+  return json({ feeds: sources.length, candidates: items.length, backlog: allFresh.length, processed: fresh.length, dropped, inserted, pushed, tagFailures, firstTagError }, 200);
 });
+
+// ── push (APNs) ──────────────────────────────────────────────────────────────
+// Fan out a breaking-news alert to every registered device. Best-effort: a bad
+// token (410) is pruned, anything else is skipped. Returns the count delivered.
+// deno-lint-ignore no-explicit-any
+async function pushBreaking(db: any, events: { id: string; headline: string }[]): Promise<number> {
+  if (!APNS_KEY || !APNS_KEY_ID || !APNS_TEAM_ID || !APNS_TOPIC) return 0;
+  const { data: tokens } = await db.from("device_tokens").select("token");
+  if (!tokens?.length) return 0;
+  let jwt: string;
+  try { jwt = await apnsJWT(); } catch (_) { return 0; }
+
+  let sent = 0;
+  for (const ev of events) {
+    const payload = JSON.stringify({
+      aps: { alert: { title: "Urgente", body: ev.headline }, sound: "default" },
+      eventId: ev.id,
+    });
+    for (const { token } of tokens as { token: string }[]) {
+      try {
+        const res = await fetch(`https://${APNS_HOST}/3/device/${token}`, {
+          method: "POST",
+          headers: {
+            authorization: `bearer ${jwt}`,
+            "apns-topic": APNS_TOPIC,
+            "apns-push-type": "alert",
+            "apns-priority": "10",
+          },
+          body: payload,
+        });
+        if (res.status === 200) sent++;
+        else if (res.status === 410) await db.from("device_tokens").delete().eq("token", token);
+        else await res.body?.cancel();
+      } catch (_) { /* skip this token */ }
+    }
+  }
+  return sent;
+}
+
+let cachedApnsJWT: { token: string; iat: number } | null = null;
+async function apnsJWT(): Promise<string> {
+  // APNs accepts a provider token for up to 60 min; reuse within the invocation.
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedApnsJWT && now - cachedApnsJWT.iat < 3000) return cachedApnsJWT.token;
+  const header = b64url(JSON.stringify({ alg: "ES256", kid: APNS_KEY_ID }));
+  const payload = b64url(JSON.stringify({ iss: APNS_TEAM_ID, iat: now }));
+  const signingInput = `${header}.${payload}`;
+  const key = await importP8(APNS_KEY);
+  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(signingInput));
+  const token = `${signingInput}.${b64urlBytes(new Uint8Array(sig))}`;
+  cachedApnsJWT = { token, iat: now };
+  return token;
+}
+async function importP8(pem: string): Promise<CryptoKey> {
+  const body = pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const der = Uint8Array.from(atob(body), (c) => c.charCodeAt(0));
+  return crypto.subtle.importKey("pkcs8", der, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+}
+function b64url(str: string): string {
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function b64urlBytes(bytes: Uint8Array): string {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function json(body: unknown, status = 200) {
@@ -191,6 +287,35 @@ function chunk<T>(arr: T[], n: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
   return out;
+}
+// ART (Argentina) calendar components for a UTC timestamp. Argentina has been
+// UTC-3 year-round since 2009, so we don't need a real timezone DB.
+function artComponents(utcMs: number) {
+  const shifted = new Date(utcMs + AR_OFFSET_HOURS * 3_600_000);
+  return {
+    y: shifted.getUTCFullYear(),
+    m: shifted.getUTCMonth() + 1,
+    d: shifted.getUTCDate(),
+    wd: shifted.getUTCDay(), // 0=Sun … 6=Sat
+    iso: shifted.toISOString().slice(0, 10),
+  };
+}
+function endOfArtDay(y: number, m: number, d: number): string {
+  // 23:59:59.999 ART = (23 - (-3)) = 26:59:59 UTC, which Date.UTC rolls into the next day.
+  return new Date(Date.UTC(y, m - 1, d, 23 - AR_OFFSET_HOURS, 59, 59, 999)).toISOString();
+}
+/// Expiry = end of the next ART business day after the article (skipping
+/// weekends + holidays). Starts the search 24h ahead so a Tuesday-afternoon
+/// story doesn't expire later that same Tuesday.
+function dayAwareExpiry(occurredAtIso: string, holidays: Set<string>): string {
+  let t = Date.parse(occurredAtIso) + 24 * 3_600_000;
+  for (let i = 0; i < 14; i++) { // hard cap so a bad seed can't infinite-loop
+    const a = artComponents(t);
+    const isWeekend = a.wd === 0 || a.wd === 6;
+    if (!isWeekend && !holidays.has(a.iso)) return endOfArtDay(a.y, a.m, a.d);
+    t += 24 * 3_600_000;
+  }
+  return new Date(Date.parse(occurredAtIso) + 24 * 3_600_000).toISOString();
 }
 async function tagItem(item: FeedItem): Promise<{ tag: Tag } | { error: string }> {
   const system = `Sos un editor de un mapa de noticias de Argentina. Devolvé SOLO el JSON pedido.
